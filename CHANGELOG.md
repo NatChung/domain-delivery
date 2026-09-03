@@ -3,6 +3,27 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.2.3
+
+Four integrity defects found in review of the first consumer Hub's pull request.
+Each let `upgrade` or `doctor` report an outcome it had not actually achieved.
+
+- Immutable rollback is now a real boundary. `restore_immutable` was skipping a
+  deleted tree because of an `exists()` guard, leaving migration-created files
+  in place because `checkout` cannot remove what Git never tracked, ignoring the
+  Git result, and running only after a migration returned normally. It now uses
+  the pre-migration fingerprint as the restore instruction — deleting additions
+  and checking out modifications and deletions — runs on the exception path too,
+  re-verifies the trees afterwards, and says `NOT be fully restored` with the
+  offending paths when it did not succeed. A migration that raises now fails the
+  upgrade with exit `2` instead of a traceback.
+- `upgrade` checks release identity before the first migration runs. An untagged
+  package previously failed only when the lock was written, by which point the
+  migrations had already changed the Hub, contrary to ADR 0008's pinning rule.
+- `doctor` verifies the recorded tag against Git. It compared the lock's `tag`
+  text with `VERSION` and never asked whether that tag points at the installed
+  HEAD, so deleting the release tag still reported healthy.
+
 ## 0.2.2
 
 - Print `untagged` rather than `None` where an untagged installation has no

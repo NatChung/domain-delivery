@@ -210,13 +210,15 @@ def read_lock(hub_root: Path) -> dict:
     return lock
 
 
-def write_lock(
-    hub_root: Path,
-    package_root: Path,
-    applied: list[str],
-    allow_untagged: bool = False,
-) -> dict:
-    version = package_version(package_root)
+def require_release_tag(
+    package_root: Path, version: str, allow_untagged: bool
+) -> str | None:
+    """The release tag for this checkout, refusing an untagged one.
+
+    Release identity is a precondition, not a closing formality. `upgrade` asks
+    this before it runs anything, so an untagged package is refused while the
+    Hub is still untouched rather than after migrations have already changed it.
+    """
     tag = package_tag(package_root, version)
     if tag is None and not allow_untagged:
         raise HubError(
@@ -225,6 +227,17 @@ def write_lock(
             f"Check out a tagged release, or pass --allow-untagged to record an "
             f"untagged installation that `doctor` will keep reporting."
         )
+    return tag
+
+
+def write_lock(
+    hub_root: Path,
+    package_root: Path,
+    applied: list[str],
+    allow_untagged: bool = False,
+) -> dict:
+    version = package_version(package_root)
+    tag = require_release_tag(package_root, version, allow_untagged)
     lock = {
         "lock_version": LOCK_VERSION,
         "package": "domain-delivery",
@@ -281,14 +294,65 @@ def immutable_fingerprint(hub_root: Path) -> dict[str, str]:
     return fingerprint
 
 
-def restore_immutable(hub_root: Path) -> None:
-    existing = [p.rstrip("/") for p in IMMUTABLE_PREFIXES if (hub_root / p.rstrip("/")).exists()]
-    if existing:
+def immutable_change(hub_root: Path, before: dict[str, str]) -> list[str]:
+    """Paths under the immutable prefixes that differ from the fingerprint."""
+    after = immutable_fingerprint(hub_root)
+    return sorted(
+        relative
+        for relative in set(before) | set(after)
+        if after.get(relative) != before.get(relative)
+    )
+
+
+def _restore_note(unrestored: list[str]) -> str:
+    """Say what the restore actually achieved, never what it attempted."""
+    if not unrestored:
+        return "The delivered record has been restored from Git."
+    return (
+        f"The delivered record could NOT be fully restored; fix these by hand "
+        f"before trusting the Hub: {', '.join(unrestored[:5])}."
+    )
+
+
+def restore_immutable(hub_root: Path, before: dict[str, str]) -> list[str]:
+    """Undo whatever a migration did to the immutable trees.
+
+    The fingerprint taken before the migration is the restore instruction, not
+    just the detector. A path the migration added is not in Git, so `checkout`
+    would leave it behind: it is deleted. A path the migration changed or
+    removed is tracked, so it is checked out by name — including a whole tree
+    the migration deleted, which an `exists()` guard would have skipped.
+
+    Returns the paths that are still wrong afterwards. An empty list is the only
+    thing that entitles the caller to say the record was restored.
+    """
+    after = immutable_fingerprint(hub_root)
+
+    for relative in sorted(set(after) - set(before)):
+        path = hub_root / relative
+        try:
+            path.unlink()
+        except OSError:
+            continue
+
+    tracked = sorted(
+        relative
+        for relative in before
+        if after.get(relative) != before[relative]
+    )
+    if tracked:
         subprocess.run(
-            ["git", "-C", str(hub_root), "checkout", "--", *existing],
+            ["git", "-C", str(hub_root), "checkout", "--", *tracked],
             capture_output=True,
             text=True,
         )
+
+    restored = immutable_fingerprint(hub_root)
+    return sorted(
+        relative
+        for relative in set(before) | set(restored)
+        if restored.get(relative) != before.get(relative)
+    )
 
 
 def run_migration(migration: Path, hub_root: Path) -> list[str]:
@@ -435,6 +499,17 @@ def cmd_doctor(args) -> int:
     if lock.get("tag") and lock["tag"].lstrip("v") != str(lock.get("version")):
         findings.append(f"lock tag {lock['tag']!r} does not match version {lock.get('version')!r}")
 
+    # The lock's tag text agreeing with VERSION says nothing about Git. Ask Git
+    # which tag points at the installed HEAD, so a deleted or moved release tag
+    # is a finding instead of a healthy report.
+    if lock.get("tag"):
+        checked_out_tag = package_tag(package_root, version)
+        if checked_out_tag != lock["tag"]:
+            findings.append(
+                f"lock tag {lock['tag']!r} does not point at the checked-out "
+                f"commit; Git reports {checked_out_tag or 'no matching tag'} there"
+            )
+
     commit = package_commit(package_root)
     if lock.get("commit") != commit:
         findings.append(
@@ -520,22 +595,37 @@ def cmd_upgrade(args) -> int:
         )
 
     pending = pending_migrations(package_root, lock)
+    # Release identity is checked before the first migration runs, not when the
+    # lock is written. An untagged package that failed only at write_lock had
+    # already mutated the Hub by then, which ADR 0008's pinning rule forbids.
+    require_release_tag(
+        package_root, package_version(package_root), args.allow_untagged
+    )
+
     applied = list(lock.get("migrations_applied") or [])
     for migration in pending:
         print(f"running migration {migration.name}")
         before = immutable_fingerprint(hub_root)
-        notes = run_migration(migration, hub_root)
-        after = immutable_fingerprint(hub_root)
-        if after != before:
-            touched = sorted(set(before) ^ set(after)) or sorted(
-                path for path in before if before[path] != after.get(path)
-            )
-            restore_immutable(hub_root)
+        try:
+            notes = run_migration(migration, hub_root)
+        except BaseException as exc:
+            # A migration that raises has still already written whatever it
+            # wrote, so the immutable trees are restored on this path too.
+            unrestored = restore_immutable(hub_root, before)
+            raise HubError(
+                f"{migration.name}: the migration failed with "
+                f"{type(exc).__name__}: {exc}. {_restore_note(unrestored)} "
+                f"The upgrade stopped and the lock was not updated."
+            ) from exc
+
+        touched = immutable_change(hub_root, before)
+        if touched:
+            unrestored = restore_immutable(hub_root, before)
             raise HubError(
                 f"{migration.name}: a migration changed the immutable delivered "
-                f"record, which no upgrade may rewrite. The change has been "
-                f"restored from Git and the upgrade stopped; the lock was not "
-                f"updated: {', '.join(touched[:5])}"
+                f"record, which no upgrade may rewrite: "
+                f"{', '.join(touched[:5])}. {_restore_note(unrestored)} "
+                f"The upgrade stopped and the lock was not updated."
             )
         for note in notes:
             print(f"  {note}")

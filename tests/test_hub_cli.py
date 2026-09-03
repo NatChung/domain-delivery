@@ -753,6 +753,144 @@ class ImmutableArtifactTests(unittest.TestCase):
                 )
 
 
+ADD_MIGRATION = """
+def migrate(hub_root):
+    target = hub_root / "specs" / "frozen" / "created-by-migration.json"
+    target.write_text("added\\n", encoding="utf-8")
+    return ["added a spec file"]
+"""
+
+DELETE_MIGRATION = """
+import shutil
+
+
+def migrate(hub_root):
+    shutil.rmtree(hub_root / "evidence")
+    return ["deleted the evidence tree"]
+"""
+
+RAISING_MIGRATION = """
+def migrate(hub_root):
+    (hub_root / "specs" / "frozen" / "snapshot-manifest.json").write_text(
+        "rewritten\\n", encoding="utf-8"
+    )
+    raise RuntimeError("migration blew up after writing")
+"""
+
+
+class ImmutableRollbackTests(unittest.TestCase):
+    """Detecting the change is only half of it. The record has to come back.
+
+    Each case asserts the same three things: the upgrade fails cleanly with exit
+    2, the message does not claim a restore that did not happen, and the frozen
+    bytes on disk are exactly what they were before the migration ran.
+    """
+
+    FROZEN = ("specs/frozen/snapshot-manifest.json",
+              "evidence/run-001/check-ledger.jsonl")
+
+    def hub_with_frozen_artifacts(self, package, hub):
+        run("init", "--hub", str(hub.path), "--package", str(package.path),
+            "--project", "example")
+        for relative in self.FROZEN:
+            target = hub.path / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("original\n", encoding="utf-8")
+        hub.commit_all("freeze")
+
+    def assert_record_intact(self, hub):
+        """Byte-for-byte and file-for-file. A leftover addition is a rewrite too."""
+        for relative in self.FROZEN:
+            path = hub.path / relative
+            self.assertTrue(path.is_file(), f"{relative} is missing")
+            self.assertEqual(
+                path.read_text(encoding="utf-8"), "original\n", relative
+            )
+        present = sorted(
+            path.relative_to(hub.path).as_posix()
+            for prefix in ("specs", "evidence")
+            for path in (hub.path / prefix).rglob("*")
+            if path.is_file()
+        )
+        self.assertEqual(present, sorted(self.FROZEN))
+
+    def upgrade_with(self, migration_name, body):
+        with FakePackage() as package, HubDir() as hub:
+            self.hub_with_frozen_artifacts(package, hub)
+            package.add_migration(migration_name, body)
+            result = run(
+                "upgrade", "--hub", str(hub.path), "--package", str(package.path)
+            )
+            self.assertEqual(result.returncode, INVALID, result.stdout)
+            self.assertIn("restored", result.stderr.lower())
+            self.assertNotIn("NOT be fully restored", result.stderr)
+            self.assert_record_intact(hub)
+            self.assertNotIn(migration_name, hub.lock()["migrations_applied"])
+            return result
+
+    def test_a_migration_that_adds_a_spec_file_has_that_file_removed(self):
+        result = self.upgrade_with("0002-adder", ADD_MIGRATION)
+        self.assertIn("created-by-migration.json", result.stderr)
+
+    def test_a_migration_that_deletes_the_evidence_tree_has_it_checked_out(self):
+        result = self.upgrade_with("0002-deleter", DELETE_MIGRATION)
+        self.assertIn("check-ledger.jsonl", result.stderr)
+
+    def test_a_migration_that_raises_after_writing_is_still_rolled_back(self):
+        result = self.upgrade_with("0002-raiser", RAISING_MIGRATION)
+        self.assertIn("RuntimeError", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+
+class ReleasePreflightTests(unittest.TestCase):
+    """An untagged package is refused before it can change anything."""
+
+    def test_upgrade_runs_no_migration_when_the_package_is_untagged(self):
+        with FakePackage() as package, HubDir() as hub:
+            run("init", "--hub", str(hub.path), "--package", str(package.path),
+                "--project", "example")
+            hub.commit_all("install")
+            before = hub.lock()
+
+            directory = package.path / "migrations" / "0002-untagged"
+            directory.mkdir()
+            (directory / "migrate.py").write_text(
+                TOUCH_MIGRATION.format(tag="untagged"), encoding="utf-8"
+            )
+            git(package.path, "add", "-A")
+            git(package.path, "commit", "-q", "-m", "untagged migration")
+
+            result = run(
+                "upgrade", "--hub", str(hub.path), "--package", str(package.path)
+            )
+            self.assertEqual(result.returncode, INVALID, result.stdout)
+            self.assertFalse(
+                (hub.path / "migrated-untagged.txt").exists(),
+                "an untagged package mutated the Hub before being refused",
+            )
+            self.assertEqual(hub.lock(), before)
+
+
+class DoctorTagIdentityTests(unittest.TestCase):
+    """The lock's tag text is a claim about Git, so Git is what settles it."""
+
+    def test_doctor_reports_a_release_tag_that_no_longer_points_at_HEAD(self):
+        with FakePackage() as package, HubDir() as hub:
+            run("init", "--hub", str(hub.path), "--package", str(package.path),
+                "--project", "example")
+            self.assertEqual(
+                run("doctor", "--hub", str(hub.path),
+                    "--package", str(package.path)).returncode,
+                PASS,
+            )
+            git(package.path, "tag", "-d", f"v{package.path.joinpath('VERSION').read_text().strip()}")
+            result = run(
+                "doctor", "--hub", str(hub.path), "--package", str(package.path)
+            )
+            self.assertEqual(result.returncode, FAIL, result.stdout)
+            self.assertIn("does not point at the checked-out commit", result.stdout)
+
+
 class VersionOrderingTests(unittest.TestCase):
     """SemVer: a prerelease precedes the release it leads to."""
 

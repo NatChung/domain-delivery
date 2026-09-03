@@ -17,7 +17,11 @@ Rules:
   and bound evidence stay exactly as recorded; that is what makes a completed
   run reproducible. This is enforced, not asked for: `upgrade` fingerprints both
   trees around every migration, and one that changes them is restored from Git
-  and fails the upgrade without updating the lock.
+  and fails the upgrade without updating the lock. Raising does not escape this;
+  a migration that writes and then throws is rolled back the same way. The
+  fingerprint drives the restore, so an added file is deleted and a modified or
+  deleted one is checked out — and `upgrade` verifies the result, reporting what
+  it could not restore rather than claiming success.
 - A migration must be idempotent in effect: `upgrade` records applied names in
   `workflow.lock` and never runs one twice, but a re-run after a manual revert
   must still be safe.
