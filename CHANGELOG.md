@@ -3,6 +3,11 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.2.2
+
+- Print `untagged` rather than `None` where an untagged installation has no
+  release tag to name.
+
 ## 0.2.1
 
 - The Hub CLI suite no longer depends on whether this repository's own working

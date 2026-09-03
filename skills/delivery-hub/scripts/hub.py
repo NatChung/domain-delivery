@@ -489,7 +489,7 @@ def cmd_doctor(args) -> int:
         for finding in findings:
             print(f"  - {finding}")
         return FAIL
-    print(f"healthy: {lock['package']} {lock['tag']} at {lock['commit'][:12]}")
+    print(f"healthy: {lock['package']} {lock['tag'] or 'untagged'} at {lock['commit'][:12]}")
     return PASS
 
 
@@ -547,7 +547,10 @@ def cmd_upgrade(args) -> int:
         hub_root, package_root, applied, allow_untagged=args.allow_untagged
     )
     if new_lock["commit"] == lock.get("commit") and not pending:
-        print(f"already at {new_lock['tag']} ({new_lock['commit'][:12]}); lock refreshed")
+        print(
+            f"already at {new_lock['tag'] or 'untagged'} "
+            f"({new_lock['commit'][:12]}); lock refreshed"
+        )
     else:
         if previous_version and version_key(new_lock["version"]) < version_key(previous_version):
             direction = "downgraded"
@@ -555,7 +558,10 @@ def cmd_upgrade(args) -> int:
             direction = "moved"
         else:
             direction = "upgraded"
-        print(f"{direction} {previous} -> {new_lock['tag']} ({new_lock['commit'][:12]})")
+        print(
+            f"{direction} {previous or 'untagged'} -> "
+            f"{new_lock['tag'] or 'untagged'} ({new_lock['commit'][:12]})"
+        )
     print(f"  {len(pending)} migration(s) applied")
     print("  snapshots and evidence were not touched")
     if args.package is None:
