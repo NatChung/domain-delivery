@@ -80,13 +80,13 @@ def capability_node(status="confirmed", readiness="L3", authority="authority:pro
 
 def term_node():
     return {
-        "id": "term:sneaker",
+        "id": "term:catalog-item",
         "type": "term",
-        "title": "Sneaker",
+        "title": "Catalog item",
         "status": "candidate",
         "readiness": "L1",
         "sources": ["document:glossary"],
-        "source_path": "terms/sneaker.md",
+        "source_path": "terms/catalog-item.md",
         "body": "A product term.\n",
         "content_digest": kernel.digest_bytes(b"term"),
     }
@@ -207,7 +207,7 @@ Meaning.\n"""
         node["sources"] = 123
         self.assertTrue(any("sources" in error for error in kernel.validate_node_shape(node)))
         capability = capability_node(status="candidate", readiness="L2", authority="unknown")
-        capability["related_nodes"] = ["term:sneaker", "term:sneaker"]
+        capability["related_nodes"] = ["term:catalog-item", "term:catalog-item"]
         self.assertTrue(any("duplicates" in error for error in kernel.validate_node_shape(capability)))
 
     def test_id_namespace_must_match_type(self):
@@ -222,9 +222,9 @@ Meaning.\n"""
 
     def test_pinned_commit_reconstructs_the_whole_index(self):
         text = """---
-id: term:sneaker
+id: term:catalog-item
 type: term
-title: Sneaker
+title: Catalog item
 status: candidate
 readiness: L1
 sources: [\"document:glossary\"]
@@ -256,7 +256,7 @@ A product term.\n"""
 
     def test_crlf_markdown_reconstructs_from_commit(self):
         text = (
-            "---\r\nid: term:sneaker\r\ntype: term\r\ntitle: Sneaker\r\n"
+            "---\r\nid: term:catalog-item\r\ntype: term\r\ntitle: Catalog item\r\n"
             "status: candidate\r\nreadiness: L1\r\nsources: [\"document:glossary\"]\r\n"
             "---\r\n\r\nA product term.\r\n"
         ).encode()

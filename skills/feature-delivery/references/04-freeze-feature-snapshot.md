@@ -140,7 +140,7 @@ Step 04 只有在以下條件全部成立才完成：
 - repo/check declaration 不完整：補 delivery routing；若 business acceptance requirement 改變，回 Domain lane；
 - output version 已存在：選擇新 version，必要時使用 `--supersedes`；
 - graph/index/commit 不一致：重新 compile/commit，不改 manifest；
-- 真實 KC graph 尚無符合條件的 active slice 時，清楚回報 blocker，不用 synthetic fixture 冒充可交付 snapshot。
+- Hub 的真實 graph 尚無符合條件的 active slice 時，清楚回報 blocker，不用 synthetic fixture 冒充可交付 snapshot。
 
 ## 邊界
 

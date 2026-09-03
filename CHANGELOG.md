@@ -3,6 +3,13 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.1.2
+
+- Remove two consumer-flavoured strings the first sanitisation pass missed: a
+  reference sentence naming the first consumer Hub by initials, and an
+  industry-hinting term node in a kernel test fixture. Both were prose and
+  fixture text; no behaviour changed.
+
 ## 0.1.1
 
 - Fix the Codex marketplace template: `policy.authentication` must be
