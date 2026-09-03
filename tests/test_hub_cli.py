@@ -827,6 +827,26 @@ def migrate(hub_root):
     return ["relinked the evidence tree"]
 """
 
+# A hard link leaves no link to see: the bytes match and `is_symlink()` is
+# false, yet the frozen path is one of two names for an inode that can be
+# rewritten from outside the Hub. The external name is recorded outside the
+# immutable prefixes so the test can write through it afterwards.
+HARDLINK_FILE_MIGRATION = """
+import os
+import tempfile
+from pathlib import Path
+
+
+def migrate(hub_root):
+    target = hub_root / "specs" / "frozen" / "snapshot-manifest.json"
+    external = Path(tempfile.mkdtemp(dir=hub_root.parent)) / "snapshot-manifest.json"
+    external.write_bytes(target.read_bytes())
+    target.unlink()
+    os.link(external, target)
+    (hub_root / "external-alias.txt").write_text(str(external), encoding="utf-8")
+    return ["hard-linked a frozen artifact"]
+"""
+
 RAISING_MIGRATION = """
 def migrate(hub_root):
     (hub_root / "specs" / "frozen" / "snapshot-manifest.json").write_text(
@@ -871,6 +891,10 @@ class ImmutableRollbackTests(unittest.TestCase):
             self.assertFalse(path.is_symlink(), f"{relative} is a link, not a file")
             self.assertTrue(path.is_file(), f"{relative} is missing")
             self.assertEqual(
+                path.stat().st_nlink, 1,
+                f"{relative} is still an alias for an inode named elsewhere",
+            )
+            self.assertEqual(
                 path.read_text(encoding="utf-8"), "original\n", relative
             )
         present = sorted(
@@ -881,7 +905,7 @@ class ImmutableRollbackTests(unittest.TestCase):
         )
         self.assertEqual(present, sorted(self.FROZEN))
 
-    def upgrade_with(self, migration_name, body):
+    def upgrade_with(self, migration_name, body, then=None):
         with FakePackage() as package, HubDir() as hub:
             self.hub_with_frozen_artifacts(package, hub)
             package.add_migration(migration_name, body)
@@ -893,6 +917,8 @@ class ImmutableRollbackTests(unittest.TestCase):
             self.assertNotIn("NOT be fully restored", result.stderr)
             self.assert_record_intact(hub)
             self.assertNotIn(migration_name, hub.lock()["migrations_applied"])
+            if then is not None:
+                then(hub.path)
             return result
 
     def test_a_migration_that_adds_a_spec_file_has_that_file_removed(self):
@@ -910,6 +936,26 @@ class ImmutableRollbackTests(unittest.TestCase):
     def test_a_migration_that_relinks_an_immutable_tree_is_caught_and_undone(self):
         result = self.upgrade_with("0002-tree-relinker", SYMLINK_TREE_MIGRATION)
         self.assertIn("check-ledger.jsonl", result.stderr)
+
+    def test_a_migration_that_hardlinks_a_frozen_file_is_caught_and_undone(self):
+        def the_alias_is_broken(hub_path):
+            """Link count 1 says the alias is gone; writing through it proves it."""
+            external = Path(
+                (hub_path / "external-alias.txt").read_text(encoding="utf-8")
+            )
+            external.write_text("rewritten from outside\n", encoding="utf-8")
+            self.assertEqual(
+                (hub_path / "specs/frozen/snapshot-manifest.json").read_text(
+                    encoding="utf-8"
+                ),
+                "original\n",
+                "the frozen artifact still changes when the outside name is written",
+            )
+
+        result = self.upgrade_with(
+            "0002-hardlinker", HARDLINK_FILE_MIGRATION, then=the_alias_is_broken
+        )
+        self.assertIn("snapshot-manifest.json", result.stderr)
 
     def test_a_migration_that_raises_after_writing_is_still_rolled_back(self):
         result = self.upgrade_with("0002-raiser", RAISING_MIGRATION)

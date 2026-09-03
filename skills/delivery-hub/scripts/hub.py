@@ -285,11 +285,21 @@ def entry_digest(path: Path) -> str:
     frozen, so the kind is part of the digest -- and a symlink is digested by
     its target text, never by reading through it, because the target may not be
     a file at all.
+
+    A hard link is the same escape without a symlink to show for it: the bytes
+    match, `is_symlink()` is false, and the frozen path is one of several names
+    for an inode that can be rewritten through any of the others. The link
+    count is therefore digested with the bytes. It is a count and not a flag so
+    that a second alias added to an already-aliased path is a change too. Both
+    fingerprints are taken by this same function, so a file that was already
+    linked before the migration and is untouched by it digests identically and
+    raises nothing.
     """
     if path.is_symlink():
         target = os.readlink(path).encode("utf-8", "surrogateescape")
         return "symlink:" + hashlib.sha256(target).hexdigest()
-    return "file:" + hashlib.sha256(path.read_bytes()).hexdigest()
+    links = path.stat().st_nlink
+    return f"file:{links}:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def immutable_fingerprint(hub_root: Path) -> dict[str, str]:
@@ -349,6 +359,15 @@ def restore_immutable(hub_root: Path, before: dict[str, str]) -> list[str]:
     removed is tracked, so it is checked out by name — including a whole tree
     the migration deleted, which an `exists()` guard would have skipped.
 
+    A tracked path is removed before it is checked out. Git restores content,
+    and whether restoring content also breaks a hard link is an artefact of how
+    a given Git writes the file, not a promise it makes: a frozen file replaced
+    by a hard link to the same bytes is content-identical, and an in-place
+    rewrite would leave the alias standing. Removing the path first makes the
+    fresh standalone file the only thing `checkout` can produce. The
+    re-verification below is what settles it either way -- a surviving link
+    still digests as an extra name for the inode and is reported as unrestored.
+
     Returns the paths that are still wrong afterwards. An empty list is the only
     thing that entitles the caller to say the record was restored.
     """
@@ -366,6 +385,12 @@ def restore_immutable(hub_root: Path, before: dict[str, str]) -> list[str]:
         for relative in before
         if after.get(relative) != before[relative]
     )
+    for relative in tracked:
+        try:
+            (hub_root / relative).unlink()
+        except OSError:
+            continue
+
     if tracked:
         subprocess.run(
             ["git", "-C", str(hub_root), "checkout", "--", *tracked],

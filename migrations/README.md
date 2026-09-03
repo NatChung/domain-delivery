@@ -23,7 +23,8 @@ Rules:
   deleted one is checked out — and `upgrade` verifies the result, reporting what
   it could not restore rather than claiming success. The fingerprint covers each
   entry's kind, not only its bytes, so replacing a frozen file or tree with a
-  symbolic link to an identical copy elsewhere is a change like any other.
+  symbolic link to an identical copy elsewhere is a change like any other, and
+  so is hard-linking one to an inode that has another name outside the Hub.
 - A migration must be idempotent in effect: `upgrade` records applied names in
   `workflow.lock` and never runs one twice, but a re-run after a manual revert
   must still be safe.

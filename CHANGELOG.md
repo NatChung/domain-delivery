@@ -3,6 +3,27 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.2.5
+
+One integrity defect found in re-review of the first consumer Hub's pull
+request. The immutable guard still had a way out of the Hub.
+
+- The immutable guard now digests a regular file's link count along with its
+  bytes. Fingerprinting the bytes alone could not tell a frozen Snapshot or
+  evidence file from a hard link to an identical inode that has another name
+  outside the Hub: `upgrade` exited `0`, recorded the migration and reported
+  that snapshots and evidence were not touched, while the record's future
+  contents could still be rewritten through the outside name. It is a count and
+  not a flag, so a further alias added to an already-linked path is a change
+  too, and a path that was already linked before a migration and left alone by
+  it raises nothing.
+- Immutable rollback removes a changed path before checking it out. Git
+  restores content, and a hard-linked frozen file is content-identical to what
+  Git holds, so whether the alias is broken depended on how a given Git chose
+  to write the file. Removing the path first makes a fresh standalone file the
+  only outcome, and the existing re-verification now reports a surviving alias
+  as unrestored rather than passing it as restored.
+
 ## 0.2.4
 
 Two integrity defects found in re-review of the first consumer Hub's pull
