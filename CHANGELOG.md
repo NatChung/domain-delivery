@@ -3,6 +3,15 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.1.1
+
+- Fix the Codex marketplace template: `policy.authentication` must be
+  `ON_INSTALL`; the 0.1.0 template emitted an unsupported `NONE`.
+
+Known gap, tracked for a later release: `doctor` compares `workflow.lock`
+against the checked-out submodule, but not against the superproject's recorded
+gitlink (`git ls-tree HEAD .domain-delivery`).
+
 ## 0.1.0
 
 First release.
