@@ -3,6 +3,14 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.2.7
+
+- Keep the method's canonical Domain Graph hierarchy aligned with the Hub
+  template and authoring schema by listing `policies/`, `terms/` and
+  `questions/` explicitly.
+- Add a workflow contract test that prevents those three hierarchy surfaces
+  from drifting again.
+
 ## 0.2.6
 
 One verification defect found in re-review of the first consumer Hub's pull
