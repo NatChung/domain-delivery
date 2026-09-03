@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Machine-readable mirror of the domain-delivery-kernel runtime contract.",
+  "$id": "https://domain-delivery.example/schema/evidence-entry.schema.json",
+  "title": "Hash-chained delivery evidence entry",
+  "oneOf": [
+    {"$ref": "#/$defs/result"},
+    {"$ref": "#/$defs/attestation"}
+  ],
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "nullableDigest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+    "identity": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*:[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "recordedAt": {"type": "string", "format": "date-time"},
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "kind", "snapshot_digest", "repository_id", "check_id",
+        "exit_code", "checker_digest", "repo_commit", "repo_state_digest",
+        "output_digest", "performed_by", "recorded_at", "previous_hash", "entry_hash"
+      ],
+      "properties": {
+        "schema_version": {"const": 1},
+        "kind": {"const": "result"},
+        "snapshot_digest": {"$ref": "#/$defs/digest"},
+        "repository_id": {"$ref": "#/$defs/name"},
+        "check_id": {"$ref": "#/$defs/name"},
+        "exit_code": {"enum": [0, 1, 2, 3]},
+        "checker_digest": {"$ref": "#/$defs/digest"},
+        "repo_commit": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"},
+        "repo_state_digest": {"$ref": "#/$defs/digest"},
+        "output_digest": {"$ref": "#/$defs/digest"},
+        "performed_by": {"$ref": "#/$defs/identity"},
+        "recorded_at": {"$ref": "#/$defs/recordedAt"},
+        "previous_hash": {"$ref": "#/$defs/nullableDigest"},
+        "entry_hash": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "kind", "snapshot_digest", "result_entry_hash",
+        "declared_by", "declaration_mode", "artifact_digest", "recorded_at",
+        "previous_hash", "entry_hash"
+      ],
+      "properties": {
+        "schema_version": {"const": 1},
+        "kind": {"const": "attestation"},
+        "snapshot_digest": {"$ref": "#/$defs/digest"},
+        "result_entry_hash": {"$ref": "#/$defs/digest"},
+        "declared_by": {"$ref": "#/$defs/identity"},
+        "declaration_mode": {"enum": ["ci_declaration", "signature_declaration", "human_declaration"]},
+        "artifact_digest": {"$ref": "#/$defs/digest"},
+        "recorded_at": {"$ref": "#/$defs/recordedAt"},
+        "previous_hash": {"$ref": "#/$defs/nullableDigest"},
+        "entry_hash": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

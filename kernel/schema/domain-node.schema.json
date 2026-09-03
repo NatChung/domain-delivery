@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Machine-readable mirror of the domain-delivery-kernel runtime contract.",
+  "$id": "https://domain-delivery.example/schema/domain-node.schema.json",
+  "title": "Compiled Domain Graph node",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "type",
+    "title",
+    "status",
+    "readiness",
+    "source_path",
+    "body",
+    "content_digest"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z_]+:[a-z0-9][a-z0-9._-]*$"},
+    "type": {"enum": ["authority", "bounded_context", "capability", "contract", "journey", "policy", "question", "term"]},
+    "title": {"type": "string", "minLength": 1},
+    "status": {"enum": ["candidate", "disputed", "confirmed", "superseded"]},
+    "readiness": {"enum": ["L0", "L1", "L2", "L3"]},
+    "authority": {"type": "string", "pattern": "^(?:unknown|authority:[a-z0-9][a-z0-9._-]*)$"},
+    "sources": {"$ref": "#/$defs/stringList"},
+    "scope": {"$ref": "#/$defs/stringList"},
+    "out_of_scope": {"$ref": "#/$defs/stringList"},
+    "open_questions": {"$ref": "#/$defs/stringList"},
+    "blocking_questions": {"$ref": "#/$defs/stringList"},
+    "preconditions": {"$ref": "#/$defs/stringList"},
+    "postconditions": {"$ref": "#/$defs/stringList"},
+    "invariants": {"$ref": "#/$defs/stringList"},
+    "invalid_cases": {"$ref": "#/$defs/stringList"},
+    "requires": {"$ref": "#/$defs/nodeReferences"},
+    "related_nodes": {"$ref": "#/$defs/nodeReferences"},
+    "confirmed_by": {"type": "string", "minLength": 1, "not": {"pattern": "^agent:"}},
+    "confirmed_at": {"type": "string", "format": "date"},
+    "confirmation_source": {"type": "string", "minLength": 1},
+    "source_path": {"type": "string", "minLength": 1},
+    "body": {"type": "string", "minLength": 1},
+    "content_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "stringList": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nodeReferences": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[a-z_]+:[a-z0-9][a-z0-9._-]*$"},
+      "uniqueItems": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"type": {"const": "authority"}}, "required": ["type"]},
+      "then": {"properties": {"id": {"pattern": "^authority:"}}}
+    },
+    {
+      "if": {"properties": {"type": {"const": "bounded_context"}}, "required": ["type"]},
+      "then": {"properties": {"id": {"pattern": "^bounded_context:"}}}
+    },
+    {
+      "if": {"properties": {"type": {"const": "capability"}}, "required": ["type"]},
+      "then": {"properties": {"id": {"pattern": "^capability:"}}}
+    },
+    {
+      "if": {"properties": {"type": {"const": "contract"}}, "required": ["type"]},
+      "then": {"properties": {"id": {"pattern": "^contract:"}}}
+    },
+    {
+      "if": {"properties": {"type": {"const": "journey"}}, "required": ["type"]},
+      "then": {"properties": {"id": {"pattern": "^journey:"}}}
+    },
+    {
+      "if": {"properties": {"type": {"const": "policy"}}, "required": ["type"]},
+      "then": {"properties": {"id": {"pattern": "^policy:"}}}
+    },
+    {
+      "if": {"properties": {"type": {"const": "question"}}, "required": ["type"]},
+      "then": {"properties": {"id": {"pattern": "^question:"}}}
+    },
+    {
+      "if": {"properties": {"type": {"const": "term"}}, "required": ["type"]},
+      "then": {"properties": {"id": {"pattern": "^term:"}}}
+    },
+    {
+      "if": {"properties": {"readiness": {"enum": ["L1", "L2", "L3"]}}, "required": ["readiness"]},
+      "then": {"required": ["sources"], "properties": {"sources": {"minItems": 1}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "readiness": {"enum": ["L2", "L3"]},
+          "type": {"enum": ["bounded_context", "capability", "contract", "journey", "policy"]}
+        },
+        "required": ["readiness", "type"]
+      },
+      "then": {
+        "required": ["scope", "out_of_scope", "open_questions"],
+        "properties": {"scope": {"minItems": 1}}
+      }
+    },
+    {
+      "if": {"properties": {"readiness": {"const": "L3"}}, "required": ["readiness"]},
+      "then": {
+        "required": ["blocking_questions"],
+        "properties": {"status": {"const": "confirmed"}, "blocking_questions": {"maxItems": 0}}
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "readiness": {"const": "L3"},
+          "type": {"enum": ["bounded_context", "capability", "contract", "journey", "policy"]}
+        },
+        "required": ["readiness", "type"]
+      },
+      "then": {
+        "required": ["preconditions", "postconditions", "invariants", "invalid_cases"],
+        "properties": {
+          "preconditions": {"minItems": 1},
+          "postconditions": {"minItems": 1},
+          "invariants": {"minItems": 1},
+          "invalid_cases": {"minItems": 1}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "confirmed"}}, "required": ["status"]},
+      "then": {"required": ["confirmed_by", "confirmed_at", "confirmation_source"]}
+    },
+    {
+      "if": {
+        "properties": {"status": {"const": "confirmed"}, "type": {"const": "authority"}},
+        "required": ["status", "type"]
+      },
+      "then": {"required": ["scope"], "properties": {"scope": {"minItems": 1}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {"const": "confirmed"},
+          "type": {"not": {"const": "authority"}}
+        },
+        "required": ["status", "type"]
+      },
+      "then": {"required": ["authority"], "properties": {"authority": {"pattern": "^authority:[a-z0-9][a-z0-9._-]*$"}}}
+    }
+  ]
+}
