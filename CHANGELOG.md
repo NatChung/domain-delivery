@@ -3,6 +3,15 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.1.7
+
+- `doctor` compares `workflow.lock` against the commit the Hub's own history
+  records for the submodule, not only against what is checked out. Those three
+  can disagree, and until now `doctor` reported healthy while a fresh clone of
+  the Hub would have installed a different version.
+- `upgrade` no longer calls a downgrade an upgrade, and says when the submodule
+  move and the lock still need committing together.
+
 ## 0.1.6
 
 - `upgrade` refuses when the installed workflow itself has uncommitted changes

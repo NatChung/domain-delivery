@@ -14,6 +14,7 @@ from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 HUB_CLI = PACKAGE_ROOT / "skills" / "delivery-hub" / "scripts" / "hub.py"
+SUBMODULE_NAME = ".domain-delivery"
 
 PASS, FAIL, INVALID = 0, 1, 2
 
@@ -572,3 +573,57 @@ class DoctorIsReadOnlyTests(unittest.TestCase):
             self.assertIn(".domain-delivery", result.stdout)
             self.assertFalse((hub.path / ".domain-delivery").exists())
             self.assertEqual(git(hub.path, "status", "--porcelain").stdout, "")
+
+
+class GitlinkAgreementTests(unittest.TestCase):
+    """The lock and the commit a fresh clone would produce must agree. If they
+    can drift while doctor says healthy, the lock stops describing the Hub."""
+
+    def hub_with_real_submodule(self, package, hub):
+        git(hub.path, "-c", "protocol.file.allow=always", "submodule", "add",
+            "--name", SUBMODULE_NAME, str(package.path), SUBMODULE_NAME)
+        run("init", "--hub", str(hub.path), "--project", "example")
+        hub.commit_all("install")
+
+    def test_doctor_reports_a_lock_that_disagrees_with_the_recorded_gitlink(self):
+        with FakePackage() as package, HubDir() as hub:
+            self.hub_with_real_submodule(package, hub)
+            package.add_migration("0002-later", TOUCH_MIGRATION.format(tag="later"))
+            head = git(package.path, "rev-parse", "HEAD").stdout.strip()
+            git(hub.path / SUBMODULE_NAME, "fetch", "-q", "origin")
+            git(hub.path / SUBMODULE_NAME, "checkout", "-q", head)
+            run("upgrade", "--hub", str(hub.path))
+            result = run("doctor", "--hub", str(hub.path))
+            self.assertEqual(result.returncode, FAIL, result.stdout)
+            self.assertIn("gitlink", result.stdout)
+
+    def test_doctor_passes_once_the_gitlink_move_is_committed(self):
+        with FakePackage() as package, HubDir() as hub:
+            self.hub_with_real_submodule(package, hub)
+            package.add_migration("0002-later", TOUCH_MIGRATION.format(tag="later"))
+            head = git(package.path, "rev-parse", "HEAD").stdout.strip()
+            git(hub.path / SUBMODULE_NAME, "fetch", "-q", "origin")
+            git(hub.path / SUBMODULE_NAME, "checkout", "-q", head)
+            run("upgrade", "--hub", str(hub.path))
+            hub.commit_all("move the submodule and the lock together")
+            result = run("doctor", "--hub", str(hub.path))
+            self.assertEqual(result.returncode, PASS, result.stdout)
+
+
+class VersionDirectionTests(unittest.TestCase):
+    """A command named upgrade must not report a downgrade as an upgrade."""
+
+    def test_moving_to_a_lower_version_is_not_called_an_upgrade(self):
+        with FakePackage() as package, HubDir() as hub:
+            run("init", "--hub", str(hub.path), "--package", str(package.path),
+                "--project", "example")
+            hub.commit_all()
+            (package.path / "VERSION").write_text("0.1.0\n", encoding="utf-8")
+            git(package.path, "add", "-A")
+            git(package.path, "commit", "-q", "-m", "older release")
+            result = run(
+                "upgrade", "--hub", str(hub.path), "--package", str(package.path)
+            )
+            self.assertEqual(result.returncode, PASS, result.stderr)
+            self.assertNotIn("upgraded", result.stdout)
+            self.assertIn("downgrade", result.stdout.lower())

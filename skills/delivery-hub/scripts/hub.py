@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -149,6 +150,32 @@ def dirty_paths(repo: Path, ignore: str | None = None) -> list[str]:
 
 # --------------------------------------------------------------------------
 # lock file
+
+
+def recorded_gitlink(hub_root: Path) -> str | None:
+    """The submodule commit the Hub's own history records, if any.
+
+    This is what a fresh clone checks out. It can differ from what is checked
+    out here, and from what the lock says — an upgrade is exactly that window —
+    so the three have to be compared, not assumed equal.
+    """
+    result = subprocess.run(
+        ["git", "-C", str(hub_root), "rev-parse", f"HEAD:{SUBMODULE_DIR}"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    commit = result.stdout.strip()
+    return commit if re.fullmatch(r"[0-9a-f]{40}", commit) else None
+
+
+def version_key(version: str) -> tuple:
+    """Sortable form of a SemVer-ish string; unparseable parts sort as text."""
+    parts = []
+    for chunk in version.split("."):
+        parts.append((0, int(chunk)) if chunk.isdigit() else (1, chunk))
+    return tuple(parts)
 
 
 def read_lock(hub_root: Path) -> dict:
@@ -354,6 +381,15 @@ def cmd_doctor(args) -> int:
     for modified in dirty_paths(package_root):
         findings.append(f"modified file inside the installation: {modified}")
 
+    if args.package is None:
+        gitlink = recorded_gitlink(hub_root)
+        if gitlink is not None and gitlink != lock.get("commit"):
+            findings.append(
+                f"lock commit {str(lock.get('commit'))[:12]} != committed gitlink "
+                f"{gitlink[:12]}; a fresh clone would install a different version. "
+                f"Commit the submodule move and the lock together."
+            )
+
     for relative in ("hub.yaml", "CONTEXT-MAP.md", "docs/domain/INDEX.md",
                      ".claude-plugin/marketplace.json", ".agents/plugins/marketplace.json"):
         if not (hub_root / relative).is_file():
@@ -411,13 +447,24 @@ def cmd_upgrade(args) -> int:
         applied.append(migration.name)
 
     previous = lock.get("tag")
+    previous_version = str(lock.get("version") or "")
     new_lock = write_lock(hub_root, package_root, applied)
     if new_lock["commit"] == lock.get("commit") and not pending:
         print(f"already at {new_lock['tag']} ({new_lock['commit'][:12]}); lock refreshed")
     else:
-        print(f"upgraded {previous} -> {new_lock['tag']} ({new_lock['commit'][:12]})")
+        if previous_version and version_key(new_lock["version"]) < version_key(previous_version):
+            direction = "downgraded"
+        elif previous_version and version_key(new_lock["version"]) == version_key(previous_version):
+            direction = "moved"
+        else:
+            direction = "upgraded"
+        print(f"{direction} {previous} -> {new_lock['tag']} ({new_lock['commit'][:12]})")
     print(f"  {len(pending)} migration(s) applied")
     print("  snapshots and evidence were not touched")
+    if args.package is None:
+        gitlink = recorded_gitlink(hub_root)
+        if gitlink is not None and gitlink != new_lock["commit"]:
+            print("  next: commit the submodule move and workflow.lock together")
     return PASS
 
 
