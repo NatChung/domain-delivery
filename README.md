@@ -21,7 +21,7 @@ package as a submodule at the fixed path `.domain-delivery/` and pin a tag:
 
 ```bash
 git submodule add https://github.com/NatChung/domain-delivery.git .domain-delivery
-git -C .domain-delivery checkout v0.2.5
+git -C .domain-delivery checkout v0.2.6
 python3 -B .domain-delivery/skills/delivery-hub/scripts/hub.py init --project my-product
 ```
 

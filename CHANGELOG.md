@@ -3,6 +3,20 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.2.6
+
+One verification defect found in re-review of the first consumer Hub's pull
+request. The suite proved the right thing by damaging the checkout it ran from.
+
+- Digest coverage and `doctor`'s untracked-file check now build an isolated
+  copy of the package and edit that. Proving a changed installation is noticed
+  means changing a released file, and these tests changed it inside the live
+  package root: a second run overlapping the first read the probe as real
+  content, and a run killed between the write and the restore left digest
+  probes behind in tracked files of the consumer's checkout. The copy carries
+  the same tracked content, so every assertion measures what it did before,
+  and no test writes into the package root any more.
+
 ## 0.2.5
 
 One integrity defect found in re-review of the first consumer Hub's pull

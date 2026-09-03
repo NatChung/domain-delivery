@@ -49,14 +49,14 @@ class HubDir:
     def __exit__(self, *exc):
         self._tmp.cleanup()
 
-    def init(self, *extra):
+    def init(self, *extra, package=None):
         # This working copy is usually sitting on an untagged development
         # commit, and whether it is tagged has nothing to do with what these
         # tests assert. ReleaseIdentityTests covers the tag rule itself.
         return run(
             "init",
             "--hub", str(self.path),
-            "--package", str(PACKAGE_ROOT),
+            "--package", str(package or PACKAGE_ROOT),
             "--project", "example",
             "--allow-untagged",
             *extra,
@@ -265,9 +265,46 @@ class UpgradeTests(unittest.TestCase):
             self.assertEqual((hub.path / "evidence" / "ledger.jsonl").read_text(), "{}\n")
 
 
+class PackageCopy:
+    """An isolated copy of the released package, for tests that must edit it.
+
+    Proving the digest and `doctor` notice a changed installation means
+    changing released files. Doing that in `PACKAGE_ROOT` edits the very
+    checkout the suite runs from: a concurrent run reads the probe as real
+    content, and a run killed between write and restore leaves the probe
+    behind in tracked upstream files. The copy carries the same tracked
+    content, so what the assertions measure does not change.
+    """
+
+    def __enter__(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self._tmp.name) / "package"
+        self.path.mkdir()
+        listing = subprocess.run(
+            ["git", "-C", str(PACKAGE_ROOT), "ls-files", "-z"],
+            capture_output=True,
+            check=True,
+        ).stdout.decode("utf-8").split("\0")
+        for rel in listing:
+            if not rel:
+                continue
+            destination = self.path / rel
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(PACKAGE_ROOT / rel, destination, follow_symlinks=False)
+        git(self.path.parent, "init", "-q", str(self.path))
+        git(self.path, "config", "user.email", "test@example.com")
+        git(self.path, "config", "user.name", "test")
+        git(self.path, "add", "-A")
+        git(self.path, "commit", "-q", "-m", "package")
+        return self
+
+    def __exit__(self, *exc):
+        self._tmp.cleanup()
+
+
 class PackageDigestTests(unittest.TestCase):
-    def digest(self, hub):
-        hub.init()
+    def digest(self, hub, package=None):
+        hub.init(package=package.path if package else None)
         return hub.lock()["package_digest"]
 
     def test_digest_is_stable_across_runs(self):
@@ -275,16 +312,13 @@ class PackageDigestTests(unittest.TestCase):
             self.assertEqual(self.digest(first), self.digest(second))
 
     def test_digest_changes_when_a_released_file_changes(self):
-        with HubDir() as hub:
-            before = self.digest(hub)
-        marker = PACKAGE_ROOT / "template" / "CONTEXT-MAP.md"
-        original = marker.read_bytes()
-        try:
-            marker.write_bytes(original + b"\n<!-- digest probe -->\n")
+        with PackageCopy() as package:
             with HubDir() as hub:
-                after = self.digest(hub)
-        finally:
-            marker.write_bytes(original)
+                before = self.digest(hub, package)
+            marker = package.path / "template" / "CONTEXT-MAP.md"
+            marker.write_bytes(marker.read_bytes() + b"\n<!-- digest probe -->\n")
+            with HubDir() as hub:
+                after = self.digest(hub, package)
         self.assertNotEqual(before, after)
 
 
@@ -502,18 +536,15 @@ class DigestCoverageTests(unittest.TestCase):
     file must therefore be inside the digest, not just the executable ones."""
 
     def digest_after_touching(self, relative):
-        with HubDir() as hub:
-            hub.init()
-            before = hub.lock()["package_digest"]
-        target = PACKAGE_ROOT / relative
-        original = target.read_bytes()
-        try:
-            target.write_bytes(original + b"\n<!-- digest probe -->\n")
+        with PackageCopy() as package:
             with HubDir() as hub:
-                hub.init()
+                hub.init(package=package.path)
+                before = hub.lock()["package_digest"]
+            target = package.path / relative
+            target.write_bytes(target.read_bytes() + b"\n<!-- digest probe -->\n")
+            with HubDir() as hub:
+                hub.init(package=package.path)
                 after = hub.lock()["package_digest"]
-        finally:
-            target.write_bytes(original)
         return before, after
 
     def test_editing_the_method_document_changes_the_digest(self):
@@ -531,16 +562,13 @@ class DigestCoverageTests(unittest.TestCase):
         self.assertNotEqual(before, after)
 
     def test_doctor_reports_an_untracked_file_inside_the_installation(self):
-        with HubDir() as hub:
-            hub.init()
-            stray = PACKAGE_ROOT / "STRAY-PROBE.txt"
+        with PackageCopy() as package, HubDir() as hub:
+            hub.init(package=package.path)
+            stray = package.path / "STRAY-PROBE.txt"
             stray.write_text("not tracked\n", encoding="utf-8")
-            try:
-                result = run(
-                    "doctor", "--hub", str(hub.path), "--package", str(PACKAGE_ROOT)
-                )
-            finally:
-                stray.unlink()
+            result = run(
+                "doctor", "--hub", str(hub.path), "--package", str(package.path)
+            )
             self.assertEqual(result.returncode, FAIL, result.stdout)
             self.assertIn("STRAY-PROBE.txt", result.stdout)
 
