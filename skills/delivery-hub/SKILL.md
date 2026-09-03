@@ -36,6 +36,9 @@ python3 -B .domain-delivery/skills/delivery-hub/scripts/hub.py init \
 ```
 
 - `workflow.lock` 已存在時直接停止並要求改用 `upgrade`，`--force` 也不繞過。
+- checkout 的 commit 上沒有對應 VERSION 的 release tag 時拒絕執行。lock 記錄的是
+  release，不會用 VERSION 湊一個 `v<VERSION>` 出來。確實要用未 tag 的狀態時加
+  `--allow-untagged`，lock 的 `tag` 會是 `null`，`doctor` 會一直回報它。
 - 只補缺少的檔案，不覆蓋既有檔案。
 - `--force` 只覆蓋 template 產生的檔案；`docs/domain/**`、`specs/**` 與
   `evidence/**` 永遠不覆蓋。
@@ -59,13 +62,21 @@ git -C .domain-delivery checkout <tag>
 
 ## doctor
 
-read-only：不 clone、不寫檔、不碰 Git 設定。`.domain-delivery/` 沒 checkout 時
-它回報 finding 並給出指令，不代使用者抓。
+read-only：不 clone、不寫檔、不碰 Git 設定。
+
+注意 `hub.py` 本身就住在 submodule 裡，所以 `.domain-delivery/` 完全沒 checkout
+時根本執行不到 `doctor`——那個情況要照 Hub README 的 clone 順序處理。`doctor` 的
+missing-installation finding 針對的是目錄存在但空的、或只 checkout 一半的情形。
 
 回報 lock 與安裝不一致（version、tag、commit、package digest）、安裝目錄內被修改
 或多出來的檔案、缺少的 Hub 檔案、未替換的 `{{PROJECT}}` placeholder，以及 pending
-migrations。也比對 lock 與 Hub 歷史記錄的 submodule commit——那是別人重新 clone 會
-拿到的版本，跟本機 checkout 可能不同。digest 涵蓋 release 內每個 Git 追蹤的檔案，包含 `docs/`；不符代表
+migrations。
+
+也比對 Hub 歷史記錄的 submodule gitlink——那是別人重新 clone 會拿到的版本。
+gitlink 跟 lock 不一致，或 Hub 歷史根本沒有 gitlink（工作區有、但沒 commit 進去），
+都是 finding：別人 clone 會拿到不同版本，或完全沒有 workflow。
+
+lock 的 `tag` 是 `null` 時也回報：那份安裝釘在沒有 release tag 的 commit 上。digest 涵蓋 release 內每個 Git 追蹤的檔案，包含 `docs/`；不符代表
 `.domain-delivery/` 被就地修改過——修正方式是把改動送回 upstream，不是留在 Hub 裡。
 
 任何 lane 工作開始前先跑 `doctor`；`1` 以上都先處理完再繼續。
@@ -83,7 +94,10 @@ python3 -B .domain-delivery/skills/delivery-hub/scripts/hub.py upgrade
 - 安裝目錄內若有未 commit 的改動或多餘檔案也拒絕執行；否則 lock 會把手改過的
   bytes 記成正式版本，之後每次 `doctor` 都會說 healthy。
 - 沒有 upgrade window：所有 pending migrations 依名稱順序全部執行。
-- 已完成的 Snapshot 與 evidence 永不重寫。舊 artifact 保持原樣可追溯。
+- 已完成的 Snapshot 與 evidence 永不重寫，而且這條是機械執行的：每個 migration
+  前後比對 `specs/**` 與 `evidence/**` 的 digest，一有變動就從 Git 還原、中止
+  upgrade、不更新 lock。
+- 目標版本比目前低時會說 `downgraded`，不會謊稱 upgrade。
 - 完成後把 submodule 移動與新的 `workflow.lock` 放在同一個 reviewed commit。
 
 Migration 由 package 的 [`migrations/`](../../migrations/README.md) 擁有。`init`

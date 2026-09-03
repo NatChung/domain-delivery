@@ -3,6 +3,34 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.2.0
+
+Three integrity defects found in review. The lock's job is to say truthfully
+what is installed; each of these let it say something false.
+
+- `workflow.lock` no longer fabricates a tag. `package_tag` returned
+  `v{VERSION}` when no tag pointed at the checked-out commit, so any working
+  state could be recorded and reported as a published release. `init` and
+  `upgrade` now refuse an untagged commit; `--allow-untagged` records one
+  deliberately with `tag: null`, which `doctor` keeps reporting.
+- `doctor` treats a missing `.domain-delivery` gitlink as a finding. It
+  previously only compared a gitlink that existed, so a workflow present in one
+  working copy but never committed reported healthy while a fresh clone got no
+  workflow at all.
+- Migrations can no longer rewrite the delivered record. `upgrade` fingerprints
+  `specs/**` and `evidence/**` around every migration; one that changes them is
+  restored from Git and fails the upgrade without updating the lock. This was
+  prose in `migrations/README.md` and is now enforced.
+- `version_key` follows SemVer precedence: a prerelease sorts below its
+  release, and numeric identifiers compare numerically. It previously ranked
+  `1.0.0-alpha` above `1.0.0`.
+- `delivery-hub` SKILL.md corrected: `hub.py` lives inside the submodule, so a
+  completely absent checkout cannot run `doctor` at all. That case belongs to
+  the Hub README's clone order; the finding covers a partial checkout.
+
+Locks written by earlier versions stay readable. One written from an untagged
+commit will now be reported by `doctor` until it is re-pinned to a release.
+
 ## 0.1.7
 
 - `doctor` compares `workflow.lock` against the commit the Hub's own history

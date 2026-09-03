@@ -114,8 +114,13 @@ def package_commit(package_root: Path) -> str:
     return _git(package_root, "rev-parse", "HEAD")
 
 
-def package_tag(package_root: Path, version: str) -> str:
-    """The tag pointing at HEAD, or the VERSION-derived tag when none is set."""
+def package_tag(package_root: Path, version: str) -> str | None:
+    """The release tag pointing at HEAD, or None.
+
+    A tag is never synthesised from VERSION. An untagged commit is not a
+    release, and recording `v{VERSION}` for one would let any working state be
+    reported as a published version.
+    """
     result = subprocess.run(
         ["git", "-C", str(package_root), "tag", "--points-at", "HEAD"],
         capture_output=True,
@@ -125,7 +130,7 @@ def package_tag(package_root: Path, version: str) -> str:
     for tag in sorted(tags):
         if tag.lstrip("v") == version:
             return tag
-    return f"v{version}"
+    return None
 
 
 def dirty_paths(repo: Path, ignore: str | None = None) -> list[str]:
@@ -171,11 +176,25 @@ def recorded_gitlink(hub_root: Path) -> str | None:
 
 
 def version_key(version: str) -> tuple:
-    """Sortable form of a SemVer-ish string; unparseable parts sort as text."""
-    parts = []
-    for chunk in version.split("."):
-        parts.append((0, int(chunk)) if chunk.isdigit() else (1, chunk))
-    return tuple(parts)
+    """Sortable SemVer form.
+
+    A prerelease precedes the release it leads to, so `1.0.0-alpha` sorts below
+    `1.0.0`. Numeric identifiers compare numerically and below alphanumeric
+    ones, as the specification requires. Anything unparseable sorts as text.
+    """
+    release, _, prerelease = version.partition("-")
+    core = tuple(
+        (0, int(chunk)) if chunk.isdigit() else (1, chunk)
+        for chunk in release.split(".")
+    )
+    if not prerelease:
+        # 1 sorts above the 0 used by every prerelease below.
+        return (core, 1, ())
+    identifiers = tuple(
+        (0, int(chunk), "") if chunk.isdigit() else (1, 0, chunk)
+        for chunk in prerelease.split(".")
+    )
+    return (core, 0, identifiers)
 
 
 def read_lock(hub_root: Path) -> dict:
@@ -191,13 +210,26 @@ def read_lock(hub_root: Path) -> dict:
     return lock
 
 
-def write_lock(hub_root: Path, package_root: Path, applied: list[str]) -> dict:
+def write_lock(
+    hub_root: Path,
+    package_root: Path,
+    applied: list[str],
+    allow_untagged: bool = False,
+) -> dict:
     version = package_version(package_root)
+    tag = package_tag(package_root, version)
+    if tag is None and not allow_untagged:
+        raise HubError(
+            f"{package_root}: no Git tag `v{version}` points at the checked-out "
+            f"commit, so this is not a release and the lock will not claim it is. "
+            f"Check out a tagged release, or pass --allow-untagged to record an "
+            f"untagged installation that `doctor` will keep reporting."
+        )
     lock = {
         "lock_version": LOCK_VERSION,
         "package": "domain-delivery",
         "path": SUBMODULE_DIR,
-        "tag": package_tag(package_root, version),
+        "tag": tag,
         "version": version,
         "commit": package_commit(package_root),
         "package_digest": package_digest(package_root),
@@ -224,6 +256,39 @@ def available_migrations(package_root: Path) -> list[Path]:
 def pending_migrations(package_root: Path, lock: dict) -> list[Path]:
     applied = set(lock.get("migrations_applied") or [])
     return [m for m in available_migrations(package_root) if m.name not in applied]
+
+
+IMMUTABLE_PREFIXES = ("specs/", "evidence/")
+
+
+def immutable_fingerprint(hub_root: Path) -> dict[str, str]:
+    """Digest every file under the immutable prefixes, keyed by relative path.
+
+    A migration runs as ordinary Python inside this process, so it cannot be
+    sandboxed. What can be guaranteed is that a migration which touched the
+    delivered record does not survive: the change is detected, undone from Git,
+    and the upgrade fails.
+    """
+    fingerprint = {}
+    for prefix in IMMUTABLE_PREFIXES:
+        base = hub_root / prefix.rstrip("/")
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*")):
+            if path.is_file():
+                relative = path.relative_to(hub_root).as_posix()
+                fingerprint[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return fingerprint
+
+
+def restore_immutable(hub_root: Path) -> None:
+    existing = [p.rstrip("/") for p in IMMUTABLE_PREFIXES if (hub_root / p.rstrip("/")).exists()]
+    if existing:
+        subprocess.run(
+            ["git", "-C", str(hub_root), "checkout", "--", *existing],
+            capture_output=True,
+            text=True,
+        )
 
 
 def run_migration(migration: Path, hub_root: Path) -> list[str]:
@@ -332,8 +397,13 @@ def cmd_init(args) -> int:
         hub_root, Path(args.package) if args.package else None
     )
     added, replaced = install_template(package_root, hub_root, args.project, args.force)
-    lock = write_lock(hub_root, package_root, [m.name for m in available_migrations(package_root)])
-    print(f"installed {lock['package']} {lock['tag']} into {hub_root}")
+    lock = write_lock(
+        hub_root,
+        package_root,
+        [m.name for m in available_migrations(package_root)],
+        allow_untagged=args.allow_untagged,
+    )
+    print(f"installed {lock['package']} {lock['tag'] or 'untagged'} into {hub_root}")
     for relative in added:
         print(f"  added    {relative}")
     for relative in replaced:
@@ -381,9 +451,20 @@ def cmd_doctor(args) -> int:
     for modified in dirty_paths(package_root):
         findings.append(f"modified file inside the installation: {modified}")
 
+    if lock.get("tag") is None:
+        findings.append(
+            f"lock records no release tag; the installed commit is not a tagged "
+            f"release, so this Hub is pinned to an unpublished state"
+        )
+
     if args.package is None:
         gitlink = recorded_gitlink(hub_root)
-        if gitlink is not None and gitlink != lock.get("commit"):
+        if gitlink is None:
+            findings.append(
+                f"this Hub's history records no {SUBMODULE_DIR} gitlink, so a fresh "
+                f"clone would install no workflow at all. Commit the submodule."
+            )
+        elif gitlink != lock.get("commit"):
             findings.append(
                 f"lock commit {str(lock.get('commit'))[:12]} != committed gitlink "
                 f"{gitlink[:12]}; a fresh clone would install a different version. "
@@ -442,13 +523,29 @@ def cmd_upgrade(args) -> int:
     applied = list(lock.get("migrations_applied") or [])
     for migration in pending:
         print(f"running migration {migration.name}")
-        for note in run_migration(migration, hub_root):
+        before = immutable_fingerprint(hub_root)
+        notes = run_migration(migration, hub_root)
+        after = immutable_fingerprint(hub_root)
+        if after != before:
+            touched = sorted(set(before) ^ set(after)) or sorted(
+                path for path in before if before[path] != after.get(path)
+            )
+            restore_immutable(hub_root)
+            raise HubError(
+                f"{migration.name}: a migration changed the immutable delivered "
+                f"record, which no upgrade may rewrite. The change has been "
+                f"restored from Git and the upgrade stopped; the lock was not "
+                f"updated: {', '.join(touched[:5])}"
+            )
+        for note in notes:
             print(f"  {note}")
         applied.append(migration.name)
 
     previous = lock.get("tag")
     previous_version = str(lock.get("version") or "")
-    new_lock = write_lock(hub_root, package_root, applied)
+    new_lock = write_lock(
+        hub_root, package_root, applied, allow_untagged=args.allow_untagged
+    )
     if new_lock["commit"] == lock.get("commit") and not pending:
         print(f"already at {new_lock['tag']} ({new_lock['commit'][:12]}); lock refreshed")
     else:
@@ -480,8 +577,17 @@ def build_parser() -> argparse.ArgumentParser:
             help=f"package root; defaults to <hub>/{SUBMODULE_DIR}",
         )
 
+    def writes_lock(p):
+        common(p)
+        p.add_argument(
+            "--allow-untagged",
+            action="store_true",
+            help="record an installation whose commit carries no release tag; "
+                 "doctor keeps reporting it",
+        )
+
     p_init = sub.add_parser("init", help="install the workflow into a Hub")
-    common(p_init)
+    writes_lock(p_init)
     p_init.add_argument("--project", required=True, help="Hub project name")
     p_init.add_argument(
         "--force",
@@ -495,7 +601,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_doctor.set_defaults(func=cmd_doctor)
 
     p_upgrade = sub.add_parser("upgrade", help="move the Hub to the checked-out version")
-    common(p_upgrade)
+    writes_lock(p_upgrade)
     p_upgrade.set_defaults(func=cmd_upgrade)
     return parser
 

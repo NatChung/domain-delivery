@@ -286,6 +286,7 @@ class FakePackage:
         self._tmp = tempfile.TemporaryDirectory()
         self.path = Path(self._tmp.name) / "package"
         (self.path / "migrations").mkdir(parents=True)
+        self.patch = 0
         (self.path / "VERSION").write_text("0.2.0\n", encoding="utf-8")
         shutil.copytree(PACKAGE_ROOT / "template", self.path / "template")
         git(self.path.parent, "init", "-q", str(self.path))
@@ -293,7 +294,15 @@ class FakePackage:
         git(self.path, "config", "user.name", "test")
         git(self.path, "add", "-A")
         git(self.path, "commit", "-q", "-m", "package")
+        git(self.path, "tag", "-a", "v0.2.0", "-m", "v0.2.0")
         return self
+
+    def release(self, version, message="release"):
+        """Commit the current tree as a tagged release, like a real upstream."""
+        (self.path / "VERSION").write_text(version + "\n", encoding="utf-8")
+        git(self.path, "add", "-A")
+        git(self.path, "commit", "-q", "-m", message)
+        git(self.path, "tag", "-a", f"v{version}", "-m", f"v{version}")
 
     def __exit__(self, *exc):
         self._tmp.cleanup()
@@ -302,8 +311,8 @@ class FakePackage:
         directory = self.path / "migrations" / name
         directory.mkdir()
         (directory / "migrate.py").write_text(body, encoding="utf-8")
-        git(self.path, "add", "-A")
-        git(self.path, "commit", "-q", "-m", name)
+        self.patch += 1
+        self.release(f"0.2.{self.patch}", name)
 
 
 TOUCH_MIGRATION = """
@@ -618,12 +627,132 @@ class VersionDirectionTests(unittest.TestCase):
             run("init", "--hub", str(hub.path), "--package", str(package.path),
                 "--project", "example")
             hub.commit_all()
-            (package.path / "VERSION").write_text("0.1.0\n", encoding="utf-8")
-            git(package.path, "add", "-A")
-            git(package.path, "commit", "-q", "-m", "older release")
+            package.release("0.1.0", "older release")
             result = run(
                 "upgrade", "--hub", str(hub.path), "--package", str(package.path)
             )
             self.assertEqual(result.returncode, PASS, result.stderr)
             self.assertNotIn("upgraded", result.stdout)
             self.assertIn("downgrade", result.stdout.lower())
+
+
+REWRITE_MIGRATION = """
+def migrate(hub_root):
+    for relative in ("specs/frozen/snapshot-manifest.json",
+                     "evidence/run-001/check-ledger.jsonl"):
+        target = hub_root / relative
+        if target.exists():
+            target.write_text("rewritten\\n", encoding="utf-8")
+    return ["rewrote frozen artifacts"]
+"""
+
+
+class ReleaseIdentityTests(unittest.TestCase):
+    """workflow.lock pins a release. A commit nobody tagged is not one."""
+
+    def test_init_refuses_an_untagged_commit(self):
+        with FakePackage() as package, HubDir() as hub:
+            (package.path / "NOTES.md").write_text("wip\n", encoding="utf-8")
+            git(package.path, "add", "-A")
+            git(package.path, "commit", "-q", "-m", "untagged work")
+            result = run("init", "--hub", str(hub.path),
+                         "--package", str(package.path), "--project", "example")
+            self.assertEqual(result.returncode, INVALID, result.stdout)
+            self.assertIn("tag", result.stderr)
+
+    def test_init_refuses_a_tag_that_disagrees_with_VERSION(self):
+        with FakePackage() as package, HubDir() as hub:
+            (package.path / "VERSION").write_text("9.9.9\n", encoding="utf-8")
+            git(package.path, "add", "-A")
+            git(package.path, "commit", "-q", "-m", "bump without retagging")
+            git(package.path, "tag", "-a", "v0.3.0", "-m", "v0.3.0")
+            result = run("init", "--hub", str(hub.path),
+                         "--package", str(package.path), "--project", "example")
+            self.assertEqual(result.returncode, INVALID, result.stdout)
+
+    def test_untagged_use_is_possible_but_must_be_asked_for(self):
+        with FakePackage() as package, HubDir() as hub:
+            (package.path / "NOTES.md").write_text("wip\n", encoding="utf-8")
+            git(package.path, "add", "-A")
+            git(package.path, "commit", "-q", "-m", "untagged work")
+            result = run("init", "--hub", str(hub.path), "--package", str(package.path),
+                         "--project", "example", "--allow-untagged")
+            self.assertEqual(result.returncode, PASS, result.stderr)
+            self.assertIsNone(hub.lock()["tag"])
+
+    def test_doctor_reports_an_untagged_installation(self):
+        with FakePackage() as package, HubDir() as hub:
+            (package.path / "NOTES.md").write_text("wip\n", encoding="utf-8")
+            git(package.path, "add", "-A")
+            git(package.path, "commit", "-q", "-m", "untagged work")
+            run("init", "--hub", str(hub.path), "--package", str(package.path),
+                "--project", "example", "--allow-untagged")
+            result = run("doctor", "--hub", str(hub.path), "--package", str(package.path))
+            self.assertEqual(result.returncode, FAIL, result.stdout)
+            self.assertIn("tag", result.stdout)
+
+
+class MissingGitlinkTests(unittest.TestCase):
+    """A workflow present only in someone's working copy is not installed."""
+
+    def test_doctor_reports_a_workflow_absent_from_the_hub_history(self):
+        with FakePackage() as package, HubDir() as hub:
+            git(hub.path, "-c", "protocol.file.allow=always", "submodule", "add",
+                "--name", SUBMODULE_NAME, str(package.path), SUBMODULE_NAME)
+            run("init", "--hub", str(hub.path), "--project", "example")
+            hub.commit_all("install the workflow")
+            # `git add -A` would re-stage the gitlink, so commit the removal alone.
+            git(hub.path, "rm", "-q", "--cached", SUBMODULE_NAME)
+            git(hub.path, "commit", "-q", "-m", "hub history without the workflow")
+            result = run("doctor", "--hub", str(hub.path))
+            self.assertEqual(result.returncode, FAIL, result.stdout)
+            self.assertIn("gitlink", result.stdout)
+
+
+class ImmutableArtifactTests(unittest.TestCase):
+    """Snapshots and evidence are the record of what was delivered. A migration
+    that can rewrite them can rewrite history after the fact."""
+
+    def hub_with_frozen_artifacts(self, package, hub):
+        run("init", "--hub", str(hub.path), "--package", str(package.path),
+            "--project", "example")
+        for relative in ("specs/frozen/snapshot-manifest.json",
+                         "evidence/run-001/check-ledger.jsonl"):
+            target = hub.path / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("original\n", encoding="utf-8")
+        hub.commit_all("freeze")
+
+    def test_upgrade_refuses_a_migration_that_rewrites_frozen_artifacts(self):
+        with FakePackage() as package, HubDir() as hub:
+            self.hub_with_frozen_artifacts(package, hub)
+            package.add_migration("0002-rewriter", REWRITE_MIGRATION)
+            result = run("upgrade", "--hub", str(hub.path), "--package", str(package.path))
+            self.assertEqual(result.returncode, INVALID, result.stdout)
+            self.assertIn("0002-rewriter", result.stderr)
+
+    def test_frozen_artifacts_survive_such_a_migration(self):
+        with FakePackage() as package, HubDir() as hub:
+            self.hub_with_frozen_artifacts(package, hub)
+            package.add_migration("0002-rewriter", REWRITE_MIGRATION)
+            run("upgrade", "--hub", str(hub.path), "--package", str(package.path))
+            for relative in ("specs/frozen/snapshot-manifest.json",
+                             "evidence/run-001/check-ledger.jsonl"):
+                self.assertEqual(
+                    (hub.path / relative).read_text(encoding="utf-8"), "original\n",
+                    relative,
+                )
+
+
+class VersionOrderingTests(unittest.TestCase):
+    """SemVer: a prerelease precedes the release it leads to."""
+
+    def test_prerelease_precedes_its_release(self):
+        sys.path.insert(0, str(HUB_CLI.parent))
+        import hub as hub_module
+
+        self.assertLess(hub_module.version_key("1.0.0-alpha"), hub_module.version_key("1.0.0"))
+        self.assertLess(hub_module.version_key("1.0.0-alpha"), hub_module.version_key("1.0.0-beta"))
+        self.assertLess(hub_module.version_key("1.0.0-alpha.1"), hub_module.version_key("1.0.0-alpha.2"))
+        self.assertLess(hub_module.version_key("0.9.9"), hub_module.version_key("1.0.0-alpha"))
+        self.assertLess(hub_module.version_key("1.0.0"), hub_module.version_key("1.0.1"))

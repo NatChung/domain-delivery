@@ -15,7 +15,9 @@ Rules:
   Hub-owned documentation.
 - A migration must never rewrite `specs/**` or `evidence/**`. Frozen Snapshots
   and bound evidence stay exactly as recorded; that is what makes a completed
-  run reproducible.
+  run reproducible. This is enforced, not asked for: `upgrade` fingerprints both
+  trees around every migration, and one that changes them is restored from Git
+  and fails the upgrade without updating the lock.
 - A migration must be idempotent in effect: `upgrade` records applied names in
   `workflow.lock` and never runs one twice, but a re-run after a manual revert
   must still be safe.
