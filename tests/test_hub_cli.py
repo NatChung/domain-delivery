@@ -462,3 +462,51 @@ class UpgradeDirtinessTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, INVALID)
             self.assertIn("CONTEXT-MAP.md", result.stderr)
+
+
+class DigestCoverageTests(unittest.TestCase):
+    """workflow.lock exists to notice a modified installation. Every released
+    file must therefore be inside the digest, not just the executable ones."""
+
+    def digest_after_touching(self, relative):
+        with HubDir() as hub:
+            hub.init()
+            before = hub.lock()["package_digest"]
+        target = PACKAGE_ROOT / relative
+        original = target.read_bytes()
+        try:
+            target.write_bytes(original + b"\n<!-- digest probe -->\n")
+            with HubDir() as hub:
+                hub.init()
+                after = hub.lock()["package_digest"]
+        finally:
+            target.write_bytes(original)
+        return before, after
+
+    def test_editing_the_method_document_changes_the_digest(self):
+        before, after = self.digest_after_touching("docs/workflow.md")
+        self.assertNotEqual(before, after)
+
+    def test_editing_a_method_decision_record_changes_the_digest(self):
+        before, after = self.digest_after_touching(
+            "docs/adr/0008-distribute-shared-workflow-as-pinned-submodule.md"
+        )
+        self.assertNotEqual(before, after)
+
+    def test_editing_an_example_changes_the_digest(self):
+        before, after = self.digest_after_touching("examples/README.md")
+        self.assertNotEqual(before, after)
+
+    def test_doctor_reports_an_untracked_file_inside_the_installation(self):
+        with HubDir() as hub:
+            hub.init()
+            stray = PACKAGE_ROOT / "STRAY-PROBE.txt"
+            stray.write_text("not tracked\n", encoding="utf-8")
+            try:
+                result = run(
+                    "doctor", "--hub", str(hub.path), "--package", str(PACKAGE_ROOT)
+                )
+            finally:
+                stray.unlink()
+            self.assertEqual(result.returncode, FAIL, result.stdout)
+            self.assertIn("STRAY-PROBE.txt", result.stdout)

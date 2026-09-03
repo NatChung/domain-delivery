@@ -27,11 +27,6 @@ SUBMODULE_DIR = ".domain-delivery"
 LOCK_NAME = "workflow.lock"
 LOCK_VERSION = 1
 
-# Directories whose bytes define the release. Ordered for a stable digest.
-DIGEST_ROOTS = ("kernel", "skills", "template", "migrations")
-DIGEST_FILES = ("VERSION", ".claude-plugin/plugin.json", ".codex-plugin/plugin.json")
-DIGEST_SKIP_DIRS = {".git", "__pycache__", ".pytest_cache"}
-DIGEST_SKIP_SUFFIXES = {".pyc", ".pyo"}
 
 # Hub content the template must never overwrite, even with --force: this is
 # meaning and execution basis the Hub owns, not template output.
@@ -48,36 +43,36 @@ class HubError(Exception):
 # package identity
 
 
-def _digest_candidates(package_root: Path) -> list[Path]:
-    files: list[Path] = []
-    for name in DIGEST_FILES:
-        candidate = package_root / name
-        if candidate.is_file():
-            files.append(candidate)
-    for root in DIGEST_ROOTS:
-        base = package_root / root
-        if not base.is_dir():
-            continue
-        for path in base.rglob("*"):
-            if not path.is_file():
-                continue
-            if any(part in DIGEST_SKIP_DIRS for part in path.relative_to(base).parts):
-                continue
-            if path.suffix in DIGEST_SKIP_SUFFIXES:
-                continue
-            files.append(path)
-    return files
+def released_files(package_root: Path) -> list[str]:
+    """Every file the release ships, as sorted repository-relative paths.
+
+    The list is whatever Git tracks. Naming directories here instead would mean
+    a new top-level folder silently falls outside the digest, and `docs/` —
+    which carries the method every Hub pins — did exactly that.
+    """
+    listing = _git_raw(package_root, "ls-files", "-z").split("\0")
+    return sorted(entry for entry in listing if entry)
+
+
+def untracked_files(package_root: Path) -> list[str]:
+    """Files present in the installation that the release does not ship."""
+    listing = _git_raw(
+        package_root, "ls-files", "-z", "--others", "--exclude-standard"
+    ).split("\0")
+    return sorted(entry for entry in listing if entry)
 
 
 def package_digest(package_root: Path) -> str:
     """Hash the released bytes: sorted relative paths, then each file's content.
 
-    Paths are included so a rename changes the digest, and the list is sorted so
-    the result does not depend on filesystem order.
+    Paths are hashed too, so a rename changes the digest, and the list is sorted
+    so the result never depends on filesystem order.
     """
     digest = hashlib.sha256()
-    for path in sorted(_digest_candidates(package_root), key=lambda p: p.relative_to(package_root).as_posix()):
-        relative = path.relative_to(package_root).as_posix()
+    for relative in released_files(package_root):
+        path = package_root / relative
+        if not path.is_file():
+            continue
         digest.update(relative.encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes())
@@ -331,6 +326,9 @@ def cmd_doctor(args) -> int:
     digest = package_digest(package_root)
     if lock.get("package_digest") != digest:
         findings.append("package digest does not match the lock; the installation was modified")
+
+    for stray in untracked_files(package_root):
+        findings.append(f"untracked file inside the installation: {stray}")
 
     for relative in ("hub.yaml", "CONTEXT-MAP.md", "docs/domain/INDEX.md",
                      ".claude-plugin/marketplace.json", ".agents/plugins/marketplace.json"):

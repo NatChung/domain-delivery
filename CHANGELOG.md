@@ -3,6 +3,17 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.1.5
+
+- `workflow.lock`'s package digest now covers every file the release ships,
+  taken from what Git tracks. Earlier versions hashed a hand-written list of
+  directories, so `docs/` and `examples/` fell outside it: someone could edit
+  `.domain-delivery/docs/workflow.md` — the method every Hub pins — in place and
+  `doctor` would still report healthy. Existing locks will report a digest
+  mismatch once; re-run `upgrade` to record the new one.
+- `doctor` also reports untracked files inside the installation, which the
+  digest cannot see by construction.
+
 ## 0.1.4
 
 - Parse `git status --porcelain` from unstripped output. Stripping it removed
