@@ -149,6 +149,9 @@ docs/domain/                 Markdown-first canonical graph record
   capabilities/              capability nodes
   journeys/                  journey nodes
   contracts/                 cross-context and wire contracts
+  policies/                  rules that decide outcomes
+  terms/                     ubiquitous language entries
+  questions/                 unresolved semantic questions, with who must answer
   shared-kernel/             deliberately shared concepts
   authorities/               who may confirm which statements
 
