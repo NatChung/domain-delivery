@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -274,23 +275,48 @@ def pending_migrations(package_root: Path, lock: dict) -> list[Path]:
 IMMUTABLE_PREFIXES = ("specs/", "evidence/")
 
 
+def entry_digest(path: Path) -> str:
+    """Digest one immutable entry by its kind as well as its content.
+
+    Digesting `read_bytes()` alone digests whatever the path resolves to, not
+    the path itself. Swapping a delivered file for a symlink to an identical
+    copy outside the Hub would leave that digest unchanged while the record's
+    future contents moved out of the Hub's control. The kind is part of what is
+    frozen, so the kind is part of the digest -- and a symlink is digested by
+    its target text, never by reading through it, because the target may not be
+    a file at all.
+    """
+    if path.is_symlink():
+        target = os.readlink(path).encode("utf-8", "surrogateescape")
+        return "symlink:" + hashlib.sha256(target).hexdigest()
+    return "file:" + hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def immutable_fingerprint(hub_root: Path) -> dict[str, str]:
-    """Digest every file under the immutable prefixes, keyed by relative path.
+    """Digest every entry under the immutable prefixes, keyed by relative path.
 
     A migration runs as ordinary Python inside this process, so it cannot be
     sandboxed. What can be guaranteed is that a migration which touched the
     delivered record does not survive: the change is detected, undone from Git,
     and the upgrade fails.
+
+    `rglob` does not descend through a symlinked directory, so replacing a tree
+    inside the record with a link makes its files disappear from the
+    fingerprint -- itself a detected change. A prefix root replaced by a link is
+    recorded as that link instead of being walked, for the same reason.
     """
     fingerprint = {}
     for prefix in IMMUTABLE_PREFIXES:
         base = hub_root / prefix.rstrip("/")
+        if base.is_symlink():
+            fingerprint[base.relative_to(hub_root).as_posix()] = entry_digest(base)
+            continue
         if not base.is_dir():
             continue
         for path in sorted(base.rglob("*")):
-            if path.is_file():
+            if path.is_symlink() or path.is_file():
                 relative = path.relative_to(hub_root).as_posix()
-                fingerprint[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+                fingerprint[relative] = entry_digest(path)
     return fingerprint
 
 
@@ -459,6 +485,16 @@ def cmd_init(args) -> int:
         )
     package_root = ensure_submodule(
         hub_root, Path(args.package) if args.package else None
+    )
+    # Release identity is checked before the first template file is written, not
+    # when the lock is written. An untagged package that failed only at
+    # write_lock had already installed adapters -- and with --force already
+    # overwritten existing ones -- into a Hub the command then refused to
+    # install, which ADR 0008's pinning rule forbids. `write_lock` asks the same
+    # question again below; being the same question on the same checkout, it
+    # cannot disagree.
+    require_release_tag(
+        package_root, package_version(package_root), args.allow_untagged
     )
     added, replaced = install_template(package_root, hub_root, args.project, args.force)
     lock = write_lock(

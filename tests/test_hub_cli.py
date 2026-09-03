@@ -669,6 +669,33 @@ class ReleaseIdentityTests(unittest.TestCase):
             self.assertEqual(result.returncode, INVALID, result.stdout)
             self.assertIn("tag", result.stderr)
 
+    def test_init_writes_nothing_when_it_refuses_an_untagged_commit(self):
+        """A refusal that already installed adapters is not a refusal."""
+        with FakePackage() as package, HubDir() as hub:
+            (package.path / "NOTES.md").write_text("wip\n", encoding="utf-8")
+            git(package.path, "add", "-A")
+            git(package.path, "commit", "-q", "-m", "untagged work")
+            before = sorted(p.name for p in hub.path.iterdir())
+            result = run("init", "--hub", str(hub.path),
+                         "--package", str(package.path), "--project", "example")
+            self.assertEqual(result.returncode, INVALID, result.stdout)
+            self.assertEqual(
+                sorted(p.name for p in hub.path.iterdir()), before,
+                "an untagged package installed the template before being refused",
+            )
+
+    def test_forced_init_overwrites_nothing_when_it_refuses(self):
+        with FakePackage() as package, HubDir() as hub:
+            (package.path / "NOTES.md").write_text("wip\n", encoding="utf-8")
+            git(package.path, "add", "-A")
+            git(package.path, "commit", "-q", "-m", "untagged work")
+            adapter = hub.path / "AGENTS.md"
+            adapter.write_text("hub-owned\n", encoding="utf-8")
+            result = run("init", "--hub", str(hub.path), "--force",
+                         "--package", str(package.path), "--project", "example")
+            self.assertEqual(result.returncode, INVALID, result.stdout)
+            self.assertEqual(adapter.read_text(encoding="utf-8"), "hub-owned\n")
+
     def test_init_refuses_a_tag_that_disagrees_with_VERSION(self):
         with FakePackage() as package, HubDir() as hub:
             (package.path / "VERSION").write_text("9.9.9\n", encoding="utf-8")
@@ -769,6 +796,37 @@ def migrate(hub_root):
     return ["deleted the evidence tree"]
 """
 
+# The external copy holds the same bytes as the artifact it replaces, so a
+# fingerprint taken by reading through the link cannot tell the two apart.
+SYMLINK_FILE_MIGRATION = """
+import tempfile
+from pathlib import Path
+
+
+def migrate(hub_root):
+    target = hub_root / "specs" / "frozen" / "snapshot-manifest.json"
+    external = Path(tempfile.mkdtemp()) / "snapshot-manifest.json"
+    external.write_bytes(target.read_bytes())
+    target.unlink()
+    target.symlink_to(external)
+    return ["relinked a frozen artifact"]
+"""
+
+SYMLINK_TREE_MIGRATION = """
+import shutil
+import tempfile
+from pathlib import Path
+
+
+def migrate(hub_root):
+    target = hub_root / "evidence"
+    external = Path(tempfile.mkdtemp()) / "evidence"
+    shutil.copytree(target, external)
+    shutil.rmtree(target)
+    target.symlink_to(external, target_is_directory=True)
+    return ["relinked the evidence tree"]
+"""
+
 RAISING_MIGRATION = """
 def migrate(hub_root):
     (hub_root / "specs" / "frozen" / "snapshot-manifest.json").write_text(
@@ -799,9 +857,18 @@ class ImmutableRollbackTests(unittest.TestCase):
         hub.commit_all("freeze")
 
     def assert_record_intact(self, hub):
-        """Byte-for-byte and file-for-file. A leftover addition is a rewrite too."""
+        """Byte-for-byte, file-for-file and kind-for-kind.
+
+        A leftover addition is a rewrite too, and so is a link standing where a
+        regular file was: reading through it would report the right bytes while
+        the record's future contents lived outside the Hub.
+        """
+        for prefix in ("specs", "evidence"):
+            base = hub.path / prefix
+            self.assertFalse(base.is_symlink(), f"{prefix} is a link, not a tree")
         for relative in self.FROZEN:
             path = hub.path / relative
+            self.assertFalse(path.is_symlink(), f"{relative} is a link, not a file")
             self.assertTrue(path.is_file(), f"{relative} is missing")
             self.assertEqual(
                 path.read_text(encoding="utf-8"), "original\n", relative
@@ -810,7 +877,7 @@ class ImmutableRollbackTests(unittest.TestCase):
             path.relative_to(hub.path).as_posix()
             for prefix in ("specs", "evidence")
             for path in (hub.path / prefix).rglob("*")
-            if path.is_file()
+            if path.is_symlink() or path.is_file()
         )
         self.assertEqual(present, sorted(self.FROZEN))
 
@@ -834,6 +901,14 @@ class ImmutableRollbackTests(unittest.TestCase):
 
     def test_a_migration_that_deletes_the_evidence_tree_has_it_checked_out(self):
         result = self.upgrade_with("0002-deleter", DELETE_MIGRATION)
+        self.assertIn("check-ledger.jsonl", result.stderr)
+
+    def test_a_migration_that_relinks_a_frozen_file_is_caught_and_undone(self):
+        result = self.upgrade_with("0002-relinker", SYMLINK_FILE_MIGRATION)
+        self.assertIn("snapshot-manifest.json", result.stderr)
+
+    def test_a_migration_that_relinks_an_immutable_tree_is_caught_and_undone(self):
+        result = self.upgrade_with("0002-tree-relinker", SYMLINK_TREE_MIGRATION)
         self.assertIn("check-ledger.jsonl", result.stderr)
 
     def test_a_migration_that_raises_after_writing_is_still_rolled_back(self):

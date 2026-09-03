@@ -3,6 +3,26 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.2.4
+
+Two integrity defects found in re-review of the first consumer Hub's pull
+request. Both let a command report an outcome it had not actually achieved.
+
+- The immutable guard now fingerprints each entry's kind and, for a symbolic
+  link, its target text — never the bytes read through it. Digesting
+  `read_bytes()` alone digested whatever the path resolved to, so a migration
+  could replace a frozen Snapshot or evidence file with a link to an identical
+  copy outside the Hub and produce an unchanged fingerprint: `upgrade` passed,
+  the lock moved, and the record's future contents were no longer the Hub's.
+  A prefix root replaced by a link is recorded as that link rather than walked,
+  and `rglob` does not descend through a linked directory, so a relinked tree
+  disappears from the fingerprint and is likewise caught and restored.
+- `init` checks release identity before it writes the first template file. An
+  untagged package previously failed only when the lock was written, by which
+  point the adapters, both marketplaces and the docs tree were already installed
+  — and with `--force`, existing Hub files already overwritten — in a Hub the
+  command then refused to install.
+
 ## 0.2.3
 
 Four integrity defects found in review of the first consumer Hub's pull request.
