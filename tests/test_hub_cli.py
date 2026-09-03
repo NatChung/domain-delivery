@@ -162,9 +162,12 @@ class DoctorTests(unittest.TestCase):
         return run("doctor", "--hub", str(hub.path), "--package", str(PACKAGE_ROOT))
 
     def test_doctor_passes_on_a_fresh_install(self):
-        with HubDir() as hub:
-            hub.init()
-            result = self.doctor(hub)
+        # A committed package, so "healthy" cannot be masked by this working
+        # copy's own uncommitted edits.
+        with FakePackage() as package, HubDir() as hub:
+            run("init", "--hub", str(hub.path), "--package", str(package.path),
+                "--project", "example")
+            result = run("doctor", "--hub", str(hub.path), "--package", str(package.path))
             self.assertEqual(result.returncode, PASS, result.stdout + result.stderr)
             self.assertIn("healthy", result.stdout)
 
@@ -211,8 +214,9 @@ class DoctorTests(unittest.TestCase):
 
 
 class UpgradeTests(unittest.TestCase):
-    def upgrade(self, hub):
-        return run("upgrade", "--hub", str(hub.path), "--package", str(PACKAGE_ROOT))
+    def upgrade(self, hub, package=None):
+        target = str(package.path) if package else str(PACKAGE_ROOT)
+        return run("upgrade", "--hub", str(hub.path), "--package", target)
 
     def test_upgrade_refuses_a_dirty_working_tree(self):
         with HubDir() as hub:
@@ -230,10 +234,11 @@ class UpgradeTests(unittest.TestCase):
             self.assertIn("init", result.stderr)
 
     def test_upgrade_on_a_clean_hub_refreshes_the_lock(self):
-        with HubDir() as hub:
-            hub.init()
+        with FakePackage() as package, HubDir() as hub:
+            run("init", "--hub", str(hub.path), "--package", str(package.path),
+                "--project", "example")
             hub.commit_all()
-            result = self.upgrade(hub)
+            result = self.upgrade(hub, package)
             self.assertEqual(result.returncode, PASS, result.stderr)
             self.assertIn("snapshots and evidence were not touched", result.stdout)
 
@@ -419,15 +424,22 @@ class UpgradeDirtinessTests(unittest.TestCase):
     """Moving the submodule is how an upgrade starts, so it cannot be the thing
     that blocks one. Every other uncommitted change still must."""
 
+    def setUp(self):
+        self.package = FakePackage().__enter__()
+
+    def tearDown(self):
+        self.package.__exit__(None, None, None)
+
     def test_upgrade_proceeds_when_only_the_submodule_pointer_moved(self):
         with HubDir() as hub:
-            hub.init()
+            run("init", "--hub", str(hub.path), "--package", str(self.package.path),
+                "--project", "example")
             hub.commit_all()
             (hub.path / ".domain-delivery").mkdir()
             (hub.path / ".domain-delivery" / "VERSION").write_text("0.9.9\n", encoding="utf-8")
             git(hub.path, "add", "-A")
             result = run(
-                "upgrade", "--hub", str(hub.path), "--package", str(PACKAGE_ROOT)
+                "upgrade", "--hub", str(hub.path), "--package", str(self.package.path)
             )
             self.assertEqual(result.returncode, PASS, result.stderr)
 
@@ -435,7 +447,8 @@ class UpgradeDirtinessTests(unittest.TestCase):
         """An unstaged entry starts with a space in porcelain output, which is
         exactly where naive parsing loses the first character of the path."""
         with HubDir() as hub:
-            hub.init()
+            run("init", "--hub", str(hub.path), "--package", str(self.package.path),
+                "--project", "example")
             (hub.path / ".domain-delivery").mkdir()
             (hub.path / ".domain-delivery" / "VERSION").write_text("0.9.9\n", encoding="utf-8")
             git(hub.path, "add", "-A")
@@ -445,20 +458,21 @@ class UpgradeDirtinessTests(unittest.TestCase):
                 git(hub.path, "status", "--porcelain").stdout.startswith(" ")
             )
             result = run(
-                "upgrade", "--hub", str(hub.path), "--package", str(PACKAGE_ROOT)
+                "upgrade", "--hub", str(hub.path), "--package", str(self.package.path)
             )
             self.assertEqual(result.returncode, PASS, result.stderr)
 
     def test_upgrade_still_refuses_other_uncommitted_changes(self):
         with HubDir() as hub:
-            hub.init()
+            run("init", "--hub", str(hub.path), "--package", str(self.package.path),
+                "--project", "example")
             hub.commit_all()
             (hub.path / ".domain-delivery").mkdir()
             (hub.path / ".domain-delivery" / "VERSION").write_text("0.9.9\n", encoding="utf-8")
             (hub.path / "CONTEXT-MAP.md").write_text("edited\n", encoding="utf-8")
             git(hub.path, "add", "-A")
             result = run(
-                "upgrade", "--hub", str(hub.path), "--package", str(PACKAGE_ROOT)
+                "upgrade", "--hub", str(hub.path), "--package", str(self.package.path)
             )
             self.assertEqual(result.returncode, INVALID)
             self.assertIn("CONTEXT-MAP.md", result.stderr)
@@ -510,3 +524,51 @@ class DigestCoverageTests(unittest.TestCase):
                 stray.unlink()
             self.assertEqual(result.returncode, FAIL, result.stdout)
             self.assertIn("STRAY-PROBE.txt", result.stdout)
+
+
+class InstallationIntegrityTests(unittest.TestCase):
+    """The lock exists to record bytes nobody edited by hand. A command that
+    blesses a hand-edited installation destroys that guarantee."""
+
+    def install(self, hub, package):
+        return run(
+            "init", "--hub", str(hub.path), "--package", str(package.path),
+            "--project", "example",
+        )
+
+    def test_upgrade_refuses_when_the_installation_itself_is_modified(self):
+        with FakePackage() as package, HubDir() as hub:
+            self.install(hub, package)
+            hub.commit_all()
+            target = package.path / "template" / "CONTEXT-MAP.md"
+            target.write_text(target.read_text(encoding="utf-8") + "edited\n", encoding="utf-8")
+            result = run(
+                "upgrade", "--hub", str(hub.path), "--package", str(package.path)
+            )
+            self.assertEqual(result.returncode, INVALID, result.stdout)
+            self.assertIn("CONTEXT-MAP.md", result.stderr)
+
+    def test_doctor_reports_a_modified_installation_rather_than_blessing_it(self):
+        with FakePackage() as package, HubDir() as hub:
+            self.install(hub, package)
+            target = package.path / "template" / "CONTEXT-MAP.md"
+            target.write_text(target.read_text(encoding="utf-8") + "edited\n", encoding="utf-8")
+            result = run(
+                "doctor", "--hub", str(hub.path), "--package", str(package.path)
+            )
+            self.assertEqual(result.returncode, FAIL, result.stdout)
+
+
+class DoctorIsReadOnlyTests(unittest.TestCase):
+    """ADR 0008 calls doctor read-only. Nothing it does may write, and it must
+    not reach the network on the user's behalf."""
+
+    def test_doctor_reports_a_missing_installation_instead_of_fetching_it(self):
+        with HubDir() as hub:
+            hub.init()
+            hub.commit_all()
+            result = run("doctor", "--hub", str(hub.path))
+            self.assertEqual(result.returncode, FAIL, result.stdout + result.stderr)
+            self.assertIn(".domain-delivery", result.stdout)
+            self.assertFalse((hub.path / ".domain-delivery").exists())
+            self.assertEqual(git(hub.path, "status", "--porcelain").stdout, "")

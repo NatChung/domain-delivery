@@ -59,10 +59,13 @@ git -C .domain-delivery checkout <tag>
 
 ## doctor
 
-read-only。回報 lock 與安裝不一致（version、tag、commit、package digest）、缺少
-的 Hub 檔案、未替換的 `{{PROJECT}}` placeholder，以及 pending migrations。
-digest 不符代表 `.domain-delivery/` 被就地修改過——修正方式是把改動送回
-upstream，不是留在 Hub 裡。
+read-only：不 clone、不寫檔、不碰 Git 設定。`.domain-delivery/` 沒 checkout 時
+它回報 finding 並給出指令，不代使用者抓。
+
+回報 lock 與安裝不一致（version、tag、commit、package digest）、安裝目錄內被修改
+或多出來的檔案、缺少的 Hub 檔案、未替換的 `{{PROJECT}}` placeholder，以及 pending
+migrations。digest 涵蓋 release 內每個 Git 追蹤的檔案，包含 `docs/`；不符代表
+`.domain-delivery/` 被就地修改過——修正方式是把改動送回 upstream，不是留在 Hub 裡。
 
 任何 lane 工作開始前先跑 `doctor`；`1` 以上都先處理完再繼續。
 
@@ -74,7 +77,10 @@ git -C .domain-delivery checkout <new-tag>
 python3 -B .domain-delivery/skills/delivery-hub/scripts/hub.py upgrade
 ```
 
-- working tree 不乾淨時拒絕執行；先 commit 或另外收起改動。
+- Hub working tree 不乾淨時拒絕執行；先 commit 或另外收起改動。`.domain-delivery`
+  這個 gitlink 的移動本身不算，因為那就是升級的第一步。
+- 安裝目錄內若有未 commit 的改動或多餘檔案也拒絕執行；否則 lock 會把手改過的
+  bytes 記成正式版本，之後每次 `doctor` 都會說 healthy。
 - 沒有 upgrade window：所有 pending migrations 依名稱順序全部執行。
 - 已完成的 Snapshot 與 evidence 永不重寫。舊 artifact 保持原樣可追溯。
 - 完成後把 submodule 移動與新的 `workflow.lock` 放在同一個 reviewed commit。

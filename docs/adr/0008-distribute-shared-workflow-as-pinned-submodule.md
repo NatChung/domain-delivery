@@ -30,8 +30,16 @@ Consequences:
 - `.gitmodules` must use the public URL
   `https://github.com/NatChung/domain-delivery.git`, not a machine-local SSH
   alias; local identity is handled with `url.<alias>.insteadOf`.
-- `init` and `doctor` must run `git submodule update --init` on behalf of the
-  user and compare the checked-out commit against `workflow.lock`.
-- `doctor` is read-only. `upgrade` refuses to run on a dirty working tree.
+- `init` and `upgrade` may run `git submodule update --init` on behalf of the
+  user; `doctor` may not. As first written this ADR asked `doctor` to do both,
+  which is a contradiction: initialising a submodule clones over the network and
+  writes to the working tree. Read-only wins. `doctor` reports a missing
+  installation as a finding and names the command to fix it.
+- `upgrade` refuses to run on a dirty working tree, and separately refuses when
+  the installed workflow itself has uncommitted changes. Moving the submodule to
+  a new tag is how an upgrade starts, so the gitlink move alone must not block
+  one — but hand-edited bytes inside the installation must, or the lock would
+  record a digest of a modification nobody reviewed and every later `doctor`
+  would call it healthy.
 - No cross-host behaviour test is required: gates are enforced by the kernel,
   which is host-neutral Python, so host differences cannot pass a bad artifact.

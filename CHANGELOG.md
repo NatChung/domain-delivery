@@ -3,6 +3,20 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.1.6
+
+- `upgrade` refuses when the installed workflow itself has uncommitted changes
+  or untracked files. 0.1.4's submodule exemption was too wide: it ignored every
+  status entry under `.domain-delivery`, so a hand-edited installation could be
+  recorded into `workflow.lock` and every later `doctor` would call it healthy.
+  The gitlink move that starts an upgrade is still allowed.
+- `doctor` no longer initialises the submodule. ADR 0008 asked it both to
+  auto-initialise and to be read-only; read-only wins, because initialising
+  clones over the network and writes to the working tree. A missing
+  installation is now a finding naming the command to fix it.
+- `doctor` also reports modified files inside the installation.
+- ADR 0008 amended to record that resolution.
+
 ## 0.1.5
 
 - `workflow.lock`'s package digest now covers every file the release ships,

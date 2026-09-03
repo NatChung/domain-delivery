@@ -257,19 +257,35 @@ def install_template(
 # submodule
 
 
+INIT_HINT = f"run `git submodule update --init -- {SUBMODULE_DIR}`"
+
+
+def resolve_package(hub_root: Path, package_override: Path | None) -> Path:
+    """Return the installed package root without touching anything.
+
+    Raises when the submodule is absent, so a read-only caller can report it
+    rather than fetch on the user's behalf.
+    """
+    if package_override is not None:
+        return package_override.resolve()
+    installed = hub_root / SUBMODULE_DIR
+    if not (installed / "VERSION").is_file():
+        raise HubError(f"{installed}: the workflow is not checked out; {INIT_HINT}")
+    return installed
+
+
 def ensure_submodule(hub_root: Path, package_override: Path | None) -> Path:
-    """Return the installed package root, initialising the submodule if needed."""
+    """Return the installed package root, initialising the submodule if needed.
+
+    Only the commands that already change the Hub may call this: it can clone
+    over the network and write to the working tree. `doctor` must not.
+    """
     if package_override is not None:
         return package_override.resolve()
     installed = hub_root / SUBMODULE_DIR
     if not installed.is_dir() or not any(installed.iterdir()):
         _git(hub_root, "submodule", "update", "--init", "--", SUBMODULE_DIR)
-    if not (installed / "VERSION").is_file():
-        raise HubError(
-            f"{installed}: submodule is not checked out; "
-            f"run `git submodule update --init -- {SUBMODULE_DIR}`"
-        )
-    return installed
+    return resolve_package(hub_root, None)
 
 
 # --------------------------------------------------------------------------
@@ -305,9 +321,14 @@ def cmd_doctor(args) -> int:
     hub_root = Path(args.hub).resolve()
     findings: list[str] = []
     lock = read_lock(hub_root)
-    package_root = ensure_submodule(
-        hub_root, Path(args.package) if args.package else None
-    )
+    try:
+        package_root = resolve_package(
+            hub_root, Path(args.package) if args.package else None
+        )
+    except HubError as exc:
+        print("1 finding(s):")
+        print(f"  - {exc}")
+        return FAIL
 
     version = package_version(package_root)
     if lock.get("version") != version:
@@ -329,6 +350,9 @@ def cmd_doctor(args) -> int:
 
     for stray in untracked_files(package_root):
         findings.append(f"untracked file inside the installation: {stray}")
+
+    for modified in dirty_paths(package_root):
+        findings.append(f"modified file inside the installation: {modified}")
 
     for relative in ("hub.yaml", "CONTEXT-MAP.md", "docs/domain/INDEX.md",
                      ".claude-plugin/marketplace.json", ".agents/plugins/marketplace.json"):
@@ -366,6 +390,17 @@ def cmd_upgrade(args) -> int:
     package_root = ensure_submodule(
         hub_root, Path(args.package) if args.package else None
     )
+
+    installation_dirty = dirty_paths(package_root) + untracked_files(package_root)
+    if installation_dirty:
+        listed = ", ".join(sorted(installation_dirty)[:5])
+        more = "" if len(installation_dirty) <= 5 else f" (+{len(installation_dirty) - 5} more)"
+        raise HubError(
+            f"{package_root}: the installed workflow has uncommitted changes, so "
+            f"the lock would bless hand-edited bytes. Restore it with "
+            f"`git -C {SUBMODULE_DIR} checkout .` or send the change upstream: "
+            f"{listed}{more}"
+        )
 
     pending = pending_migrations(package_root, lock)
     applied = list(lock.get("migrations_applied") or [])
