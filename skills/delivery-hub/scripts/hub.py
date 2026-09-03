@@ -95,13 +95,23 @@ def package_version(package_root: Path) -> str:
     return version
 
 
-def _git(repo: Path, *args: str) -> str:
+def _git_raw(repo: Path, *args: str) -> str:
+    """Run git and return stdout untouched.
+
+    Porcelain status encodes state in the first two columns, so the leading
+    space of an unstaged entry is data, not padding. Callers that parse
+    column-aligned output must use this, not the stripped variant.
+    """
     result = subprocess.run(
         ["git", "-C", str(repo), *args], capture_output=True, text=True
     )
     if result.returncode != 0:
         raise HubError(f"git {' '.join(args)} failed in {repo}: {result.stderr.strip()}")
-    return result.stdout.strip()
+    return result.stdout
+
+
+def _git(repo: Path, *args: str) -> str:
+    return _git_raw(repo, *args).strip()
 
 
 def package_commit(package_root: Path) -> str:
@@ -129,7 +139,7 @@ def dirty_paths(repo: Path, ignore: str | None = None) -> list[str]:
     must not be what blocks it. Everything else still does.
     """
     paths = []
-    for line in _git(repo, "status", "--porcelain").splitlines():
+    for line in _git_raw(repo, "status", "--porcelain").splitlines():
         entry = line[3:].strip()
         if " -> " in entry:                 # a rename reports "old -> new"
             entry = entry.split(" -> ", 1)[1]

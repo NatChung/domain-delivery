@@ -431,6 +431,24 @@ class UpgradeDirtinessTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, PASS, result.stderr)
 
+    def test_upgrade_proceeds_when_the_submodule_change_is_unstaged(self):
+        """An unstaged entry starts with a space in porcelain output, which is
+        exactly where naive parsing loses the first character of the path."""
+        with HubDir() as hub:
+            hub.init()
+            (hub.path / ".domain-delivery").mkdir()
+            (hub.path / ".domain-delivery" / "VERSION").write_text("0.9.9\n", encoding="utf-8")
+            git(hub.path, "add", "-A")
+            hub.commit_all()
+            (hub.path / ".domain-delivery" / "VERSION").write_text("1.0.0\n", encoding="utf-8")
+            self.assertTrue(
+                git(hub.path, "status", "--porcelain").stdout.startswith(" ")
+            )
+            result = run(
+                "upgrade", "--hub", str(hub.path), "--package", str(PACKAGE_ROOT)
+            )
+            self.assertEqual(result.returncode, PASS, result.stderr)
+
     def test_upgrade_still_refuses_other_uncommitted_changes(self):
         with HubDir() as hub:
             hub.init()

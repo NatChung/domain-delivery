@@ -3,6 +3,13 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.1.4
+
+- Parse `git status --porcelain` from unstripped output. Stripping it removed
+  the leading space of an unstaged entry, shifting every path by one character,
+  so 0.1.3's submodule exemption never matched a real unstaged submodule move
+  and `upgrade` still refused.
+
 ## 0.1.3
 
 - `upgrade` no longer refuses because of the submodule move that starts an
