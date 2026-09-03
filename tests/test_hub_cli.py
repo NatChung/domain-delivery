@@ -50,11 +50,15 @@ class HubDir:
         self._tmp.cleanup()
 
     def init(self, *extra):
+        # This working copy is usually sitting on an untagged development
+        # commit, and whether it is tagged has nothing to do with what these
+        # tests assert. ReleaseIdentityTests covers the tag rule itself.
         return run(
             "init",
             "--hub", str(self.path),
             "--package", str(PACKAGE_ROOT),
             "--project", "example",
+            "--allow-untagged",
             *extra,
         )
 
@@ -110,7 +114,12 @@ class InitTests(unittest.TestCase):
             self.assertEqual(lock["version"], (PACKAGE_ROOT / "VERSION").read_text().strip())
             self.assertRegex(lock["commit"], r"^[0-9a-f]{40}$")
             self.assertRegex(lock["package_digest"], r"^sha256:[0-9a-f]{64}$")
-            self.assertTrue(lock["tag"])
+
+    def test_lock_records_the_release_tag_when_there_is_one(self):
+        with FakePackage() as package, HubDir() as hub:
+            run("init", "--hub", str(hub.path), "--package", str(package.path),
+                "--project", "example")
+            self.assertEqual(hub.lock()["tag"], "v0.2.0")
 
     def test_init_refuses_when_a_lock_already_exists(self):
         with HubDir() as hub:

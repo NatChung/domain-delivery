@@ -3,6 +3,14 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.2.1
+
+- The Hub CLI suite no longer depends on whether this repository's own working
+  copy sits on a tagged commit. 0.2.0's tag rule made every test that installs
+  from the live tree fail during development, for a reason unrelated to what
+  those tests assert. They now opt out explicitly; the tag rule itself is
+  covered by its own tests.
+
 ## 0.2.0
 
 Three integrity defects found in review. The lock's job is to say truthfully
