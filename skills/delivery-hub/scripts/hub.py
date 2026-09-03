@@ -122,8 +122,24 @@ def package_tag(package_root: Path, version: str) -> str:
     return f"v{version}"
 
 
-def is_dirty(repo: Path) -> bool:
-    return bool(_git(repo, "status", "--porcelain"))
+def dirty_paths(repo: Path, ignore: str | None = None) -> list[str]:
+    """Uncommitted paths, optionally excluding one.
+
+    Moving the submodule is how an upgrade starts, so the submodule's own entry
+    must not be what blocks it. Everything else still does.
+    """
+    paths = []
+    for line in _git(repo, "status", "--porcelain").splitlines():
+        entry = line[3:].strip()
+        if " -> " in entry:                 # a rename reports "old -> new"
+            entry = entry.split(" -> ", 1)[1]
+        entry = entry.strip('"').rstrip("/")
+        if not entry:
+            continue
+        if ignore is not None and (entry == ignore or entry.startswith(ignore + "/")):
+            continue
+        paths.append(entry)
+    return paths
 
 
 # --------------------------------------------------------------------------
@@ -331,9 +347,13 @@ def cmd_doctor(args) -> int:
 def cmd_upgrade(args) -> int:
     hub_root = Path(args.hub).resolve()
     lock = read_lock(hub_root)
-    if is_dirty(hub_root):
+    dirty = dirty_paths(hub_root, ignore=SUBMODULE_DIR)
+    if dirty:
+        listed = ", ".join(sorted(dirty)[:5])
+        more = "" if len(dirty) <= 5 else f" (+{len(dirty) - 5} more)"
         raise HubError(
-            f"{hub_root}: working tree is dirty; commit or set aside changes before upgrading"
+            f"{hub_root}: working tree is dirty; commit or set aside changes "
+            f"before upgrading: {listed}{more}"
         )
     package_root = ensure_submodule(
         hub_root, Path(args.package) if args.package else None

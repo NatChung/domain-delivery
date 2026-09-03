@@ -3,6 +3,14 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.1.3
+
+- `upgrade` no longer refuses because of the submodule move that starts an
+  upgrade. Moving `.domain-delivery/` to the new tag is step one of the
+  documented flow, so the superproject is always dirty at that path by the time
+  `upgrade` runs; 0.1.2 and earlier made the command unusable as written. Every
+  other uncommitted change still blocks, and the refusal now names the paths.
+
 ## 0.1.2
 
 - Remove two consumer-flavoured strings the first sanitisation pass missed: a

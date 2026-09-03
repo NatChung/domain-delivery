@@ -413,3 +413,34 @@ class InstalledHubSmokeTests(unittest.TestCase):
                         "{{PROJECT}}", path.read_text(encoding="utf-8"),
                         f"placeholder left in {path.relative_to(hub.path)}",
                     )
+
+
+class UpgradeDirtinessTests(unittest.TestCase):
+    """Moving the submodule is how an upgrade starts, so it cannot be the thing
+    that blocks one. Every other uncommitted change still must."""
+
+    def test_upgrade_proceeds_when_only_the_submodule_pointer_moved(self):
+        with HubDir() as hub:
+            hub.init()
+            hub.commit_all()
+            (hub.path / ".domain-delivery").mkdir()
+            (hub.path / ".domain-delivery" / "VERSION").write_text("0.9.9\n", encoding="utf-8")
+            git(hub.path, "add", "-A")
+            result = run(
+                "upgrade", "--hub", str(hub.path), "--package", str(PACKAGE_ROOT)
+            )
+            self.assertEqual(result.returncode, PASS, result.stderr)
+
+    def test_upgrade_still_refuses_other_uncommitted_changes(self):
+        with HubDir() as hub:
+            hub.init()
+            hub.commit_all()
+            (hub.path / ".domain-delivery").mkdir()
+            (hub.path / ".domain-delivery" / "VERSION").write_text("0.9.9\n", encoding="utf-8")
+            (hub.path / "CONTEXT-MAP.md").write_text("edited\n", encoding="utf-8")
+            git(hub.path, "add", "-A")
+            result = run(
+                "upgrade", "--hub", str(hub.path), "--package", str(PACKAGE_ROOT)
+            )
+            self.assertEqual(result.returncode, INVALID)
+            self.assertIn("CONTEXT-MAP.md", result.stderr)
