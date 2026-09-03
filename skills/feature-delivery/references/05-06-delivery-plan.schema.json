@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domain-delivery.example/schema/delivery-plan-v0.1.json",
+  "title": "Feature Delivery Step 05/06 planning artifacts",
+  "oneOf": [
+    {"$ref": "#/$defs/checkProjection"},
+    {"$ref": "#/$defs/repositoryTaskPlan"}
+  ],
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "safeRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "stringArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/nonEmptyString"}
+    },
+    "nonemptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/nonEmptyString"}
+    },
+    "snapshotRuleRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node_id", "field", "statement"],
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "pattern": "^[a-z_]+:[a-z0-9][a-z0-9._-]*$"
+        },
+        "field": {
+          "enum": [
+            "scope",
+            "out_of_scope",
+            "preconditions",
+            "postconditions",
+            "invariants",
+            "invalid_cases"
+          ]
+        },
+        "statement": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projection_id",
+        "repository_id",
+        "check_id",
+        "layers",
+        "snapshot_rule_refs",
+        "repository_rule_refs",
+        "specification_paths",
+        "planned_checker_path",
+        "notes"
+      ],
+      "properties": {
+        "projection_id": {
+          "type": "string",
+          "pattern": "^05-[a-z0-9][a-z0-9._-]*$"
+        },
+        "repository_id": {"$ref": "#/$defs/name"},
+        "check_id": {"$ref": "#/$defs/name"},
+        "layers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "bdd",
+              "design_by_contract",
+              "wire_contract",
+              "architecture_contract",
+              "native_quality"
+            ]
+          }
+        },
+        "snapshot_rule_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/snapshotRuleRef"}
+        },
+        "repository_rule_refs": {"$ref": "#/$defs/stringArray"},
+        "specification_paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/safeRelativePath"}
+        },
+        "planned_checker_path": {"$ref": "#/$defs/safeRelativePath"},
+        "notes": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "checkProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "projection_status",
+        "feature",
+        "snapshot_digest",
+        "projections",
+        "blocking_reasons",
+        "extensions"
+      ],
+      "properties": {
+        "schema_version": {"const": "check-projection/v0.1"},
+        "projection_status": {
+          "enum": ["ready_for_task_planning", "incomplete"]
+        },
+        "feature": {"$ref": "#/$defs/name"},
+        "snapshot_digest": {"$ref": "#/$defs/digest"},
+        "projections": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/projection"}
+        },
+        "blocking_reasons": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"type": "object"}
+      }
+    },
+    "evidenceInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check_id", "checker_file", "output_file"],
+      "properties": {
+        "check_id": {"$ref": "#/$defs/name"},
+        "checker_file": {"$ref": "#/$defs/safeRelativePath"},
+        "output_file": {
+          "type": "string",
+          "pattern": "^/tmp/07-[^/]+$"
+        }
+      }
+    },
+    "packet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packet_id",
+        "repository_id",
+        "repository_path",
+        "delivery_lane",
+        "base_ref",
+        "repo_guides",
+        "test_seams",
+        "projection_ids",
+        "required_checks",
+        "depends_on_repositories",
+        "cross_repo_contracts",
+        "completion_criteria",
+        "evidence_inputs",
+        "notes"
+      ],
+      "properties": {
+        "packet_id": {
+          "type": "string",
+          "pattern": "^06-[a-z0-9][a-z0-9._-]*$"
+        },
+        "repository_id": {"$ref": "#/$defs/name"},
+        "repository_path": {"$ref": "#/$defs/safeRelativePath"},
+        "delivery_lane": {"$ref": "#/$defs/name"},
+        "base_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "repo_guides": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/safeRelativePath"}
+        },
+        "test_seams": {"$ref": "#/$defs/nonemptyStringArray"},
+        "projection_ids": {"$ref": "#/$defs/stringArray"},
+        "required_checks": {"$ref": "#/$defs/stringArray"},
+        "depends_on_repositories": {"$ref": "#/$defs/stringArray"},
+        "cross_repo_contracts": {"$ref": "#/$defs/stringArray"},
+        "completion_criteria": {"$ref": "#/$defs/nonemptyStringArray"},
+        "evidence_inputs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/evidenceInput"}
+        },
+        "notes": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "repositoryTaskPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "planning_status",
+        "feature",
+        "snapshot_digest",
+        "projection_digest",
+        "packets",
+        "blocking_reasons",
+        "extensions"
+      ],
+      "properties": {
+        "schema_version": {"const": "repository-task-plan/v0.1"},
+        "planning_status": {
+          "enum": ["ready_for_repository_loops", "incomplete"]
+        },
+        "feature": {"$ref": "#/$defs/name"},
+        "snapshot_digest": {"$ref": "#/$defs/digest"},
+        "projection_digest": {"$ref": "#/$defs/digest"},
+        "packets": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/packet"}
+        },
+        "blocking_reasons": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"type": "object"}
+      }
+    }
+  }
+}

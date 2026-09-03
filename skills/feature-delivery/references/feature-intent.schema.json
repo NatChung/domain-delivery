@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domain-delivery.example/schema/feature-intent-v0.1.json",
+  "title": "Feature Intent v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "intake_status",
+    "ticket",
+    "request_type",
+    "business_outcomes",
+    "request_shape",
+    "scope",
+    "constraints",
+    "dependencies",
+    "domain_hooks",
+    "evidence",
+    "source_coverage",
+    "extensions"
+  ],
+  "properties": {
+    "schema_version": {"const": "feature-intent/v0.1"},
+    "intake_status": {
+      "enum": ["ready_for_domain_lookup", "incomplete"]
+    },
+    "ticket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "url",
+        "project",
+        "issue_type",
+        "status",
+        "summary",
+        "freshness"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^(?:[A-Z][A-Z0-9]*-[0-9]+|UNKEYED)$"
+        },
+        "url": {"$ref": "#/$defs/nullableString"},
+        "project": {"$ref": "#/$defs/nullableString"},
+        "issue_type": {"$ref": "#/$defs/nullableString"},
+        "status": {"$ref": "#/$defs/nullableString"},
+        "summary": {"$ref": "#/$defs/nullableString"},
+        "freshness": {"enum": ["live", "provided", "snapshot"]}
+      }
+    },
+    "request_type": {
+      "enum": ["feature", "change", "bug", "discovery", "unknown"]
+    },
+    "business_outcomes": {"$ref": "#/$defs/stringArray"},
+    "request_shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actors", "triggers", "actions", "observable_results"],
+      "properties": {
+        "actors": {"$ref": "#/$defs/stringArray"},
+        "triggers": {"$ref": "#/$defs/stringArray"},
+        "actions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/action"}
+        },
+        "observable_results": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["included", "excluded"],
+      "properties": {
+        "included": {"$ref": "#/$defs/stringArray"},
+        "excluded": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "constraints": {"$ref": "#/$defs/stringArray"},
+    "dependencies": {"$ref": "#/$defs/stringArray"},
+    "domain_hooks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["terms"],
+      "properties": {
+        "terms": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed", "inferred", "unknown", "contradicted"],
+      "properties": {
+        "observed": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/observed"}
+        },
+        "inferred": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/inferred"}
+        },
+        "unknown": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/unknown"}
+        },
+        "contradicted": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/contradicted"}
+        }
+      }
+    },
+    "source_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewed", "unavailable", "not_applicable"],
+      "properties": {
+        "reviewed": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/reviewedSource"}
+        },
+        "unavailable": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/unavailableSource"}
+        },
+        "not_applicable": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/unavailableSource"}
+        }
+      }
+    },
+    "extensions": {"type": "object"}
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "nullableString": {
+      "oneOf": [
+        {"$ref": "#/$defs/nonEmptyString"},
+        {"type": "null"}
+      ]
+    },
+    "stringArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/nonEmptyString"}
+    },
+    "sourceId": {
+      "type": "string",
+      "pattern": "^(?:ticket|provided|snapshot):(?:[A-Z][A-Z0-9]*-[0-9]+|UNKEYED)/(?:fields|comments|attachments|links|field/[a-z0-9][a-z0-9._-]*|comment/[A-Za-z0-9][A-Za-z0-9._-]*|attachment/[A-Za-z0-9][A-Za-z0-9._-]*(?:#[^\\s]+)?|linked/[A-Z][A-Z0-9]*-[0-9]+/field/[a-z0-9][a-z0-9._-]*)$"
+    },
+    "sourceIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sourceId"}
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verb", "object"],
+      "properties": {
+        "verb": {"$ref": "#/$defs/nonEmptyString"},
+        "object": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "observed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statement", "source_ids"],
+      "properties": {
+        "statement": {"$ref": "#/$defs/nonEmptyString"},
+        "source_ids": {"$ref": "#/$defs/sourceIds"}
+      }
+    },
+    "inferred": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statement", "basis", "source_ids"],
+      "properties": {
+        "statement": {"$ref": "#/$defs/nonEmptyString"},
+        "basis": {"$ref": "#/$defs/nonEmptyString"},
+        "source_ids": {"$ref": "#/$defs/sourceIds"}
+      }
+    },
+    "unknown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question", "reason_required", "blocks_domain_lookup"],
+      "properties": {
+        "question": {"$ref": "#/$defs/nonEmptyString"},
+        "reason_required": {"$ref": "#/$defs/nonEmptyString"},
+        "blocks_domain_lookup": {"type": "boolean"}
+      }
+    },
+    "contradicted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question", "claims", "blocks_domain_lookup"],
+      "properties": {
+        "question": {"$ref": "#/$defs/nonEmptyString"},
+        "claims": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"$ref": "#/$defs/observed"}
+        },
+        "blocks_domain_lookup": {"type": "boolean"}
+      }
+    },
+    "reviewedSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "material", "author", "updated_at"],
+      "properties": {
+        "id": {"$ref": "#/$defs/sourceId"},
+        "kind": {
+          "enum": ["collection", "field", "comment", "attachment", "linked_issue"]
+        },
+        "material": {"type": "boolean"},
+        "author": {"$ref": "#/$defs/nullableString"},
+        "updated_at": {"$ref": "#/$defs/nullableString"}
+      }
+    },
+    "unavailableSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "reason"],
+      "properties": {
+        "id": {"$ref": "#/$defs/sourceId"},
+        "reason": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    }
+  }
+}

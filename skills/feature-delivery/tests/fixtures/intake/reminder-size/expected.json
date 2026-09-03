@@ -1,0 +1,22 @@
+{
+  "intake_status": "ready_for_domain_lookup",
+  "required_domain_term_any_of": [
+    ["提醒", "Reminder"],
+    ["尺寸", "size"]
+  ],
+  "required_actions": [
+    {
+      "verb": "選擇",
+      "object": "尺寸"
+    }
+  ],
+  "required_observed_source_ids": [
+    "provided:TCK-123/field/description"
+  ],
+  "required_unknown_question_terms": [
+    ["尺寸", "選填", "必填"]
+  ],
+  "forbidden_observed_statements": [
+    "尺寸為必填"
+  ]
+}

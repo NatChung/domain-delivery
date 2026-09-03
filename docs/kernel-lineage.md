@@ -6,7 +6,7 @@ PIT mechanics that conflict with the repository-neutral workflow.
 
 The old files remain recoverable from Git history. Their source was:
 
-- repository: `git@github-NatChung:NatChung/ddd-harness.git`
+- repository: `https://github.com/NatChung/ddd-harness.git`
 - source commit: `9a08233fefa2482ab54cf73274bcbda7e2f04304`
 - vendored on: 2026-08-26
 - test result recorded at vendoring: 354 passed, 2 skipped

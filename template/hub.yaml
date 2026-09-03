@@ -1,0 +1,32 @@
+# Delivery Hub configuration.
+#
+# Kinds and paths only. No accounts, cloud IDs, tokens or secrets — those
+# belong in this Hub's own docs/agents/*.md and in your credential store.
+
+project: {{PROJECT}}
+
+# Where product requests arrive. Kind only; the Skill stays tracker-neutral and
+# writes source IDs with the `ticket:` prefix.
+request_source:
+  kind: unset          # e.g. jira | github-issues | linear | none
+
+# Where method, tooling and process questions about this Hub are filed.
+hub_tracker:
+  kind: unset          # e.g. github-issues | jira | none
+
+# How agents read product code.
+code_explorer:
+  kind: unset          # e.g. codegraph | grep
+
+# Where authority nodes live inside this Hub's Domain Graph.
+authority:
+  registry: docs/domain/authorities
+
+# Delivery lanes and the product clones each lane coordinates. Lanes are
+# routing labels, never Bounded Contexts.
+lanes: []
+# lanes:
+#   - name: app
+#     repositories: [codebases/example-app]
+#   - name: server
+#     repositories: [codebases/example-service]

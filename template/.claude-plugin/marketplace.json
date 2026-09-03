@@ -1,0 +1,14 @@
+{
+  "name": "{{PROJECT}}-delivery",
+  "description": "Pinned shared workflow for this Delivery Hub",
+  "owner": {
+    "name": "{{PROJECT}} Hub maintainers"
+  },
+  "plugins": [
+    {
+      "name": "domain-delivery",
+      "source": "./.domain-delivery",
+      "description": "Domain Graph and Feature Delivery lifecycle, pinned by workflow.lock"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "domain-delivery",
+  "version": "0.1.0",
+  "description": "Two-lane Domain Graph and Feature Delivery workflow with a deterministic integrity kernel",
+  "author": {
+    "name": "Nat Chung",
+    "url": "https://github.com/NatChung"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Domain Delivery",
+    "shortDescription": "Domain Graph, Feature Snapshot and Evidence lifecycle",
+    "longDescription": "A repository-neutral two-lane workflow: a continuously versioned Markdown Domain Graph, and feature delivery from request to immutable Snapshot, repository loops and hash-chained evidence.",
+    "developerName": "Nat Chung",
+    "category": "Developer Tools",
+    "defaultPrompt": "Use the Domain Delivery workflow in this Delivery Hub.",
+    "capabilities": [
+      "Domain Graph discovery and confirmation",
+      "Immutable Feature Snapshot",
+      "Evidence integrity"
+    ]
+  }
+}
