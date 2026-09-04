@@ -3,6 +3,14 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.2.8
+
+- Translate the canonical delivery workflow into Traditional Chinese without
+  changing its accepted version 1.0 semantics, numbered structure, machine
+  identifiers, code examples or artifact contracts.
+- Remove the named reviewer from the shared workflow metadata so the method
+  contract does not encode a consumer-side reviewer.
+
 ## 0.2.7
 
 - Keep the method's canonical Domain Graph hierarchy aligned with the Hub
