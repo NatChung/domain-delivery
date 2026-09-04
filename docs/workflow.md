@@ -1,110 +1,105 @@
-# AI Coding Agent Delivery Workflow
+# AI Coding Agent 交付工作流程
 
-Status: Accepted, version 1.0
+狀態：Accepted，version 1.0
 
-Reviewed: Nat Chung, 2026-09-03 — section-by-section walkthrough against the
-16-part teaching reader; no semantic drift found. This file is the method
-source of truth; the reader remains teaching material.
+審查日期：2026-09-03 — 已逐節對照 16-part teaching reader；未發現語意偏移。
+本文件是方法的唯一來源；reader 保留為教學材料。
 
-Owner: delivery-method maintainers
-Decision record: [ADR 0005](adr/0005-versioned-domain-graph-and-feature-snapshot.md)
-Structure record: [ADR 0006](adr/0006-separate-domain-and-delivery-skills.md)
-Kernel packaging record: [ADR 0007](adr/0007-move-kernel-into-repo-plugin.md)
-Distribution record: [ADR 0008](adr/0008-distribute-shared-workflow-as-pinned-submodule.md)
+Owner：delivery-method maintainers
+決策紀錄：[ADR 0005](adr/0005-versioned-domain-graph-and-feature-snapshot.md)
+結構紀錄：[ADR 0006](adr/0006-separate-domain-and-delivery-skills.md)
+Kernel packaging 紀錄：[ADR 0007](adr/0007-move-kernel-into-repo-plugin.md)
+Distribution 紀錄：[ADR 0008](adr/0008-distribute-shared-workflow-as-pinned-submodule.md)
 
-This is the method source of truth shared by every Delivery Hub that installs
-this release. Each Hub owns its own Domain Graph and local adapter; none may
-copy and silently fork this method.
+這是每個安裝此版本的 Delivery Hub 共用的方法唯一來源。每個 Hub 擁有自己的
+Domain Graph 與 local adapter；任何 Hub 都不能複製本方法後無聲地分叉。
 
-The method separates two kinds of change that move at different speeds:
+本方法分開兩種以不同速度演進的變更：
 
 ```text
-Domain lane:       evidence → graph candidate → human confirmation → graph version
-Delivery lane:     request → active slice → frozen snapshot → repo loops → evidence
+Domain lane：       evidence → graph candidate → human confirmation → graph version
+Delivery lane：     request → active slice → frozen snapshot → repo loops → evidence
                                       │
-                                      └── pins one graph commit and selected node hashes
+                                      └── pin 一個 graph commit 與選定的 node hashes
 ```
 
-The Domain Graph keeps learning. A Feature Snapshot does not. That is the
-central rule that makes the workflow linear enough to execute without
-pretending the domain is static.
+Domain Graph 會持續學習，Feature Snapshot 則不會。這是讓工作流程足夠線性、
+可以執行，同時不假裝 domain 靜止不變的核心規則。
 
-## 1. Outcome and problem
+## 1. 目標與問題
 
-The outcome is a repeatable path from a product request to evidence-backed
-delivery. Agents may explore, draft, implement and run checks. Humans retain
-authority over business meaning, risk acceptance and exceptions.
+目標是建立一條可重複的路徑，把 product request 轉成有 evidence 支持的交付。
+Agents 可以探索、起草、實作與執行 checks；business meaning、risk acceptance 與
+exceptions 的 authority 仍由 humans 掌握。
 
-Brownfield code is evidence, not automatically truth. Product prose is also
-evidence, not automatically executable. The workflow makes disagreements
-visible before an agent turns one source's accident into a system-wide rule.
+Brownfield code 是 evidence，不會自動成為 truth；product prose 也是 evidence，
+不會自動成為 executable contract。這套工作流程會先讓歧異浮現，避免 agent 把某個
+來源中的偶然現象轉成整個系統的規則。
 
-## 2. The two-lane lifecycle
+## 2. 雙 Lane 生命週期
 
-The Domain lane is continuous. It records what the organisation currently
-believes about journeys, capabilities, Bounded Contexts, language, policies,
-contracts and decision authority.
+Domain lane 持續運作，記錄組織目前對 journeys、capabilities、Bounded Contexts、
+language、policies、contracts 與 decision authority 的理解。
 
-The Delivery lane is feature-scoped. It takes only the confirmed domain nodes
-needed for an active slice, freezes them, projects executable contracts, and
-runs repository-specific implementation loops.
+Delivery lane 以 feature 為範圍。它只取 active slice 所需的 confirmed domain
+nodes，將其 freeze，投影 executable contracts，再執行 repository-specific
+implementation loops。
 
-The lanes meet only at an explicit snapshot. Later Domain Graph edits are
-reported as drift; they do not mutate work already in progress.
+兩條 lane 只在明確的 snapshot 交會。後續 Domain Graph 的修改會回報為 drift，
+不會改寫已經進行中的工作。
 
-## 3. Truth, evidence and human authority
+## 3. Truth、evidence 與 human authority
 
-Every domain statement has two independent dimensions.
+每一個 domain statement 都有兩個彼此獨立的維度。
 
-`status` describes semantic authority:
+`status` 描述 semantic authority：
 
-- `candidate`: plausible, not yet accepted by the responsible human;
-- `disputed`: credible sources disagree;
-- `confirmed`: an identified authority accepted the statement;
-- `superseded`: retained for traceability, no longer current.
+- `candidate`：合理但尚未由負責的 human 接受；
+- `disputed`：可信來源彼此矛盾；
+- `confirmed`：已由明確的 authority 接受此 statement；
+- `superseded`：為 traceability 保留，但已不是 current。
 
-`readiness` describes how complete the evidence is:
+`readiness` 描述 evidence 的完整程度：
 
-- `L0`: an unshaped observation or question;
-- `L1`: named candidate with at least one source;
-- `L2`: boundaries, alternatives and open questions have been investigated;
-- `L3`: implementation-ready, confirmed and free of blocking ambiguity.
+- `L0`：尚未整理的 observation 或 question；
+- `L1`：已命名、至少有一個 source 的 candidate；
+- `L2`：已調查 boundaries、alternatives 與 open questions；
+- `L3`：implementation-ready、confirmed，且沒有 blocking ambiguity。
 
-Code, tickets, analytics, documents and interviews are source lanes. They
-cannot confirm themselves. A `confirmed` node records `confirmed_by`,
-`confirmed_at` and the applicable `authority`. If the owner is unknown, the
-node remains `candidate`, even when technical evidence is strong.
+Code、tickets、analytics、documents 與 interviews 都是 source lanes，不能自行確認
+自己。`confirmed` node 必須記錄 `confirmed_by`、`confirmed_at` 與適用的
+`authority`。若 owner 不明，node 就維持 `candidate`，即使 technical evidence
+很強也一樣。
 
-## 4. Build a broad Domain Graph v0
+## 4. 建立廣泛的 Domain Graph v0
 
-Start broad at L1/L2; do not wait for a perfect model. Capture:
+從廣泛的 L1／L2 開始，不必等待完美 model。記錄：
 
-- end-to-end Journeys;
-- candidate capabilities;
-- terms and policies;
-- systems/repositories as evidence locations;
-- candidate authority and ownership;
-- contradictions and unanswered questions.
+- end-to-end Journeys；
+- candidate capabilities；
+- terms 與 policies；
+- 作為 evidence locations 的 systems／repositories；
+- candidate authority 與 ownership；
+- contradictions 與 unanswered questions。
 
-The graph is Markdown-first because people must be able to review the real
-meaning. Generated JSON is an index and validation surface, never the business
-source of truth.
+Graph 採 Markdown-first，因為人必須能 review 真正的 meaning。Generated JSON 是
+index 與 validation surface，永遠不是 business source of truth。
 
-Do not infer the domain by scanning every branch. Inspect primary branches and
-current operational sources. Historical or abandoned branches are evidence
-only when deliberately selected and labelled.
+不要掃描所有 branches 來推論 domain。只檢查 primary branches 與 current
+operational sources。Historical 或 abandoned branches 只有在被刻意選取並加上標記時，
+才作為 evidence。
 
-## 5. Journey to capability to Bounded Context
+## 5. 從 Journey 到 capability，再到 Bounded Context
 
-A Journey such as `Saved item → Price alert` is an observation path, not a
-Bounded Context. Compare it with other journeys and ask where language, rules,
-ownership, invariants and change cadence remain cohesive.
+例如 `Saved item → Price alert` 這類 Journey 是 observation path，不是 Bounded
+Context。將它與其他 journeys 比較，找出 language、rules、ownership、invariants
+與 change cadence 能維持 cohesive 的邊界。
 
-Open or change a Bounded Context candidate only when several observations
-support a durable semantic boundary. A service, repository, UI surface or team
-is not sufficient evidence by itself.
+只有多項 observations 足以支持 durable semantic boundary 時，才建立或修改
+Bounded Context candidate。Service、repository、UI surface 或 team 本身都不足以
+單獨證明這個 boundary。
 
-The usual progression is:
+一般演進順序如下：
 
 ```text
 Journey step
@@ -115,31 +110,29 @@ Journey step
           → confirmed Bounded Context
 ```
 
-## 6. Context ownership, contracts and shared concepts
+## 6. Context ownership、contracts 與 shared concepts
 
-The folder-placement and lazy-creation rules in this section are `prose-only,
-unenforced`; the compiler validates node content and references, not directory
-policy.
+本節的 folder placement 與 lazy creation 規則為 `prose-only, unenforced`；compiler
+會驗證 node content 與 references，不會驗證 directory policy。
 
-A Bounded Context candidate gets its own folder only after several observations
-provide enough evidence to investigate it as a durable semantic boundary. The
-folder may therefore exist while the node is still `candidate L2`; folder
-existence does not mean that the boundary is confirmed. Do not pre-create an
-arbitrary number of empty BC folders. Human confirmation is recorded separately
-through the node's `status`, `readiness` and authority metadata.
+只有多項 observations 提供足夠 evidence，可以把一個 Bounded Context candidate
+當作 durable semantic boundary 調查時，才為它建立專屬 folder。因此 folder 可以在
+node 仍是 `candidate L2` 時存在；folder 存在不代表 boundary 已 confirmed。不要預先
+建立任意數量的空 BC folders。Human confirmation 透過 node 的 `status`、
+`readiness` 與 authority metadata 另外記錄。
 
-Cross-context interaction is expressed as a contract owned by the providing or
-co-owned boundary. Concepts genuinely shared across contexts live under the
-graph's shared-kernel area, with explicit owners and compatibility policy.
-“Shared” must not become a miscellaneous folder.
+Cross-context interaction 以 contract 表達，由 provider boundary 擁有，或由相關
+boundaries 共同擁有。真正跨 contexts 共用的 concepts 放在 graph 的 shared-kernel
+區域，並明確記錄 owners 與 compatibility policy。「Shared」不能變成 miscellaneous
+folder。
 
-`app`, `web` and `server` are delivery lanes. They help route tickets and repo
-loops; they are not Bounded Contexts. One feature snapshot may activate several
-delivery lanes and several repositories.
+`app`、`web` 與 `server` 是 delivery lanes，用來 route tickets 與 repo loops；
+它們不是 Bounded Contexts。一個 feature snapshot 可以啟用多條 delivery lanes 與
+多個 repositories。
 
-## 7. Markdown source of truth and derived index
+## 7. Markdown source of truth 與 derived index
 
-The canonical hierarchy is:
+Canonical hierarchy 如下：
 
 ```text
 docs/domain/                 Markdown-first canonical graph record
@@ -158,57 +151,52 @@ docs/domain/                 Markdown-first canonical graph record
 domain-index/index.json      deterministic, generated typed index
 ```
 
-The kernel validates IDs, types, statuses, readiness and confirmation metadata.
-It sorts nodes and emits content digests so downstream snapshots can pin exact
-meaning. The index may be deleted and regenerated; editing it by hand is an
-error.
+Kernel 會驗證 IDs、types、statuses、readiness 與 confirmation metadata。它會排序
+nodes 並輸出 content digests，讓 downstream snapshots 能 pin 精確 meaning。Index
+可以刪除後重新產生；手動編輯是錯誤操作。
 
-Code exploration remains per repository. A hub may correlate its findings, but
-symbol impact and call paths do not cross repository index boundaries.
+Code exploration 仍以單一 repository 為範圍。Hub 可以關聯各 repo 的 findings，
+但 symbol impact 與 call paths 不會跨越 repository index boundaries。
 
-## 8. Decision packets and the Domain Gate
+## 8. Decision packets 與 Domain Gate
 
-Agents should not give a PM or domain expert a pile of raw findings. For each
-decision, prepare a compact packet:
+Agents 不應把一堆 raw findings 直接交給 PM 或 domain expert。每個 decision 都要準備
+一份精簡 packet：
 
-- the exact question;
-- candidate answer and alternatives;
-- evidence for and against;
-- affected journeys, contracts and repositories;
-- consequence of delaying the decision;
-- the named authority who can confirm it.
+- exact question；
+- candidate answer 與 alternatives；
+- 支持與反對的 evidence；
+- affected journeys、contracts 與 repositories；
+- 延後決策的 consequence；
+- 可以確認它的 named authority。
 
-The Domain Gate passes only when every node selected for delivery is
-`confirmed L3`, every required authority is recorded, and no selected rule has
-a blocking contradiction. The rest of the graph may remain candidate or L2.
-This is the active-slice principle: delivery does not wait for the whole domain
-to be complete.
+只有選入 delivery 的每個 node 都是 `confirmed L3`、所有 required authority 都已
+記錄，且選中的 rules 沒有 blocking contradiction，Domain Gate 才通過。Graph 其餘
+部分可以維持 candidate 或 L2。這就是 active-slice principle：delivery 不必等待整個
+domain 完整才開始。
 
-## 9. Active slice and immutable Feature Snapshot
+## 9. Active slice 與 immutable Feature Snapshot
 
-After the Domain Gate, freeze a Feature Snapshot before deriving BDD or code.
-The snapshot contains:
+Domain Gate 通過後，在衍生 BDD 或 code 以前先 freeze Feature Snapshot。Snapshot
+包含：
 
-- feature identifier and snapshot version;
-- Domain Graph commit, source root and generated index digest;
-- selected node IDs and content digests;
-- accepted scope, invariants, preconditions, postconditions and invalid cases;
-- required delivery lanes and wire contracts;
-- required evidence/check IDs.
+- feature identifier 與 snapshot version；
+- Domain Graph commit、source root 與 generated index digest；
+- selected node IDs 與 content digests；
+- accepted scope、invariants、preconditions、postconditions 與 invalid cases；
+- required delivery lanes 與 wire contracts；
+- required evidence／check IDs。
 
-Preconditions, postconditions and invariants belong in the reviewed Markdown
-domain or feature material. The manifest references and hashes them; JSON does
-not replace their explanation.
+Preconditions、postconditions 與 invariants 應寫在 reviewed Markdown domain 或
+feature material。Manifest 只 reference 並 hash 它們；JSON 不取代其文字說明。
 
-Snapshots are immutable. When the graph changes, the agent reports drift but
-continues against the pinned snapshot unless a human classifies the correction
-as requiring a rebaseline. A replacement is a new version (`v2`) that
-supersedes `v1`; no process edits `v1` in place.
+Snapshots 是 immutable。當 graph 改變時，agent 會回報 drift，但仍依 pinned
+snapshot 繼續，除非 human 判定此修正必須 rebaseline。Replacement 以新版本
+（`v2`）取代 `v1`；任何 process 都不能原地修改 `v1`。
 
-## 10. Scrum, Definition of Ready and change classification
+## 10. Scrum、Definition of Ready 與 change classification
 
-Separate PO/PM shaping from agent execution before creating an executable
-Sprint Backlog:
+建立 executable Sprint Backlog 前，先把 PO／PM shaping 與 agent execution 分開：
 
 ```text
 Product Backlog
@@ -219,110 +207,105 @@ Product Backlog
           → repository Agent Loops
 ```
 
-The snapshot is the semantic Definition of Ready for agent work. Team capacity,
-dependencies and release readiness remain normal Scrum concerns.
+Snapshot 是 agent work 的 semantic Definition of Ready。Team capacity、dependencies
+與 release readiness 仍是一般 Scrum concerns。
 
-When something changes, classify it explicitly:
+發生變更時，必須明確分類：
 
-| Situation | Treatment |
+| 情況 | 處理方式 |
 |---|---|
-| Wrong detail found before implementation | Same feature; create snapshot v2 |
-| Wrong contract found during implementation | Stop affected loops; rebaseline to v2 |
-| Additional capability requested | New feature/change request |
-| Released code violates a valid snapshot | Bug fix |
-| Released behaviour follows a snapshot later found wrong | Corrective change; hotfix only if risk demands |
-| New business rule after release | New feature/change request |
+| 實作前發現錯誤細節 | 同一 feature；建立 snapshot v2 |
+| 實作中發現錯誤 contract | 停止受影響的 loops；rebaseline 至 v2 |
+| 要求額外 capability | 新 feature／change request |
+| Released code 違反有效 snapshot | Bug fix |
+| Released behaviour 符合 snapshot，但後來發現 snapshot 錯誤 | Corrective change；只有風險需要時才 hotfix |
+| Release 後新增 business rule | 新 feature／change request |
 
-This is primarily a management distinction: it preserves why work exists,
-which acceptance basis applies, and whether prior implementation was defective.
+這主要是 management distinction：保留工作存在的原因、適用哪一個 acceptance basis，
+以及先前 implementation 是否有 defect。
 
-## 11. Contract stack after the snapshot
+## 11. Snapshot 之後的 contract stack
 
-Project executable checks from the frozen snapshot, in this order:
+依下列順序從 frozen snapshot 投影 executable checks：
 
-1. BDD examples for observable behaviour;
-2. Design-by-Contract checks for preconditions, postconditions, invariants and
-   invalid cases;
-3. wire/schema contracts between delivery lanes or contexts;
-4. architecture contracts for dependency direction and ownership;
-5. repository-native quality checks.
+1. observable behaviour 的 BDD examples；
+2. preconditions、postconditions、invariants 與 invalid cases 的
+   Design-by-Contract checks；
+3. delivery lanes 或 contexts 之間的 wire／schema contracts；
+4. dependency direction 與 ownership 的 architecture contracts；
+5. repository-native quality checks。
 
-BDD is a projection of the snapshot, not an input used to decide the snapshot.
-The snapshot may require a named check without prescribing Java, Flutter,
-TypeScript or a particular framework.
+BDD 是 snapshot 的 projection，不是用來決定 snapshot 的 input。Snapshot 可以要求
+named check，不需要指定 Java、Flutter、TypeScript 或特定 framework。
 
-## 12. Repository Agent Loops and brownfield ratchets
+## 12. Repository Agent Loops 與 brownfield ratchets
 
-Each affected repository runs its own loop against the same snapshot:
+每個受影響的 repository 都依同一份 snapshot 執行自己的 loop：
 
 ```text
 select next contract → red test → minimal change → green → refactor
   → architecture/static checks → record evidence → fresh review
 ```
 
-The repository's own `AGENTS.md`/`CLAUDE.md`/README defines commands and local
-standards. The shared kernel binds results; it does not generate one language's
-test layout for every team.
+各 repository 自己的 `AGENTS.md`／`CLAUDE.md`／README 定義 commands 與 local
+standards。Shared kernel 負責 binding results；它不會為每個 team 產生某一種語言的
+test layout。
 
-Brownfield architecture violations are fingerprinted as a baseline. The gate
-allows known debt, rejects new violations, and ratchets the baseline downward
-when debt is removed. Known debt is not silently “passed”; it is a visible
-exception with owner and scope.
+Brownfield architecture violations 以 fingerprints 記錄成 baseline。Gate 允許 known
+debt、拒絕 new violations，並在 debt 移除時讓 baseline 只減不增。Known debt 不會
+被無聲地視為「pass」；它是包含 owner 與 scope 的 visible exception。
 
-Behaviour that contradicts the active confirmed snapshot cannot be
-grandfathered as brownfield debt. It fails or forces a human rebaseline.
+與 active confirmed snapshot 矛盾的 behaviour 不能當作 brownfield debt 被
+grandfather。它必須 fail，或由 human rebaseline。
 
-## 13. Evidence, feedback and rollout
+## 13. Evidence、feedback 與 rollout
 
-Evidence entries are appended through the kernel and hash-chained. They bind:
+Evidence entries 透過 kernel append 並形成 hash chain。每筆會 bind：
 
-- snapshot digest;
-- repository-scoped check ID and checker file digest;
-- repository commit and dirty-state digest;
-- output/artifact digest;
-- exit code and timestamp;
-- one result performer declaration;
-- a separate trusted attestation declaration and artifact digest;
-- previous entry hash.
+- snapshot digest；
+- repository-scoped check ID 與 checker file digest；
+- repository commit 與 dirty-state digest；
+- output／artifact digest；
+- exit code 與 timestamp；
+- 一份 result performer declaration；
+- 另一份獨立的 trusted attestation declaration 與 artifact digest；
+- previous entry hash。
 
-Exit code `0` means pass, `1` fail, `2` invalid evidence/input and `3` not
-applicable. Required checks pass only with `0`; historical success, missing
-checks and N/A do not satisfy the gate. The kernel enforces separation and
-integrity, while the surrounding CI or local adapter is responsible for
-authenticating the declared actor; a string identity alone is not presented as
-cryptographic proof. A local ledger is tamper-evident only when its terminal
-hash is retained or signed by an external trusted system.
+Exit code `0` 表示 pass、`1` 表示 fail、`2` 表示 invalid evidence／input、`3` 表示
+not applicable。Required checks 只有 `0` 才通過；historical success、missing checks
+與 N/A 都不能滿足 gate。Kernel 會 enforce separation 與 integrity；surrounding CI 或
+local adapter 負責驗證 declared actor 的身分，單純的 string identity 不能宣稱為
+cryptographic proof。Local ledger 只有在 terminal hash 被 external trusted system
+保存或簽署時，才能稱為 tamper-evident。
 
-Feedback updates the Domain Graph through the Domain lane. It never rewrites a
-snapshot or evidence ledger. A completed run can therefore always answer:
-“Which domain version did we implement, what changed, and what proved it?”
+Feedback 透過 Domain lane 更新 Domain Graph，永遠不會改寫 snapshot 或 evidence
+ledger。因此每個 completed run 都能回答：「我們實作了哪個 domain version、改了
+什麼，以及用什麼證明？」
 
-Roll out in thin slices:
+以 thin slices rollout：
 
-1. establish Graph v0 and authorities;
-2. choose one PM-approved pilot, thin enough to start from a single
-   confirmed rule;
-3. freeze one snapshot;
-4. run native repository loops and evidence binding;
-5. review false positives, missing contracts and decision latency;
-6. refine the method without changing completed artifacts.
+1. 建立 Graph v0 與 authorities；
+2. 選擇一個 PM-approved pilot，範圍要小到能從單一 confirmed rule 開始；
+3. freeze 一份 snapshot；
+4. 執行 native repository loops 與 evidence binding；
+5. review false positives、missing contracts 與 decision latency；
+6. 改進 method，但不修改 completed artifacts。
 
-## Artifact authority
+## Artifact 權威
 
-| Artifact | Authority | Mutable? |
+| Artifact | Authority | 可修改？ |
 |---|---|---|
-| this repository's `docs/workflow.md` | shared method | versioned edits |
-| Hub `docs/domain/**` | that Hub's domain meaning | yes, with status/history |
-| `domain-index/index.json` | generated validation/index | regenerate only |
-| `specs/<feature>/snapshot/**` | feature execution basis | no; supersede |
-| product-repo tests/contracts | executable projection | yes, against snapshot |
-| `evidence/<feature>/<run>/` | bound run declarations/evidence | kernel-appended; externally anchor terminal hash |
-| tickets/backlogs | work coordination | yes; not domain truth |
+| 本 repository 的 `docs/workflow.md` | shared method | versioned edits |
+| Hub `docs/domain/**` | 該 Hub 的 domain meaning | 可以，需保留 status／history |
+| `domain-index/index.json` | generated validation／index | 只能 regenerate |
+| `specs/<feature>/snapshot/**` | feature execution basis | 不可；以新版本 supersede |
+| product-repo tests／contracts | executable projection | 可以，需依 snapshot |
+| `evidence/<feature>/<run>/` | bound run declarations／evidence | kernel append；terminal hash 由外部 anchor |
+| tickets／backlogs | work coordination | 可以；不是 domain truth |
 
-## Implementation status
+## 實作狀態
 
-Version 1.0 defines the complete contract. Per-Hub maturity is deliberately not
-tracked here: each Hub records its live state in its own current-state
-authority, normally `docs/domain/INDEX.md`, reached through the Hub adapter. A
-Hub's adapter must explicitly map to this lifecycle before claiming
-conformance.
+Version 1.0 定義完整 contract。這裡刻意不追蹤各 Hub 的 maturity；每個 Hub 在自己的
+current-state authority 記錄 live state，通常是透過 Hub adapter 到達的
+`docs/domain/INDEX.md`。Hub adapter 必須明確 map 到此 lifecycle，才能宣稱
+conformance。
