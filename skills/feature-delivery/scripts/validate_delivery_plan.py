@@ -170,10 +170,10 @@ def safe_relative_path(value: Any, path: str, errors: list[str]) -> bool:
     return True
 
 
-def load_verified_snapshot(path: Path) -> dict[str, Any]:
+def load_verified_snapshot(path: Path, graph_repo: Path | None = None) -> dict[str, Any]:
     try:
         snapshot = load_kernel_json(path)
-        errors = verify_snapshot_against_graph(snapshot, path)
+        errors = verify_snapshot_against_graph(snapshot, path, graph_repo)
     except KernelError as exc:
         raise ValidationError(str(exc)) from exc
     if errors:
@@ -623,6 +623,7 @@ def validate_task_plan(
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description=__doc__)
     root.add_argument("--snapshot", required=True)
+    root.add_argument("--graph-repo", type=Path, help="checkout containing the pinned Graph commit")
     root.add_argument("--projection", required=True)
     root.add_argument("--task-plan")
     root.add_argument("--require-ready", action="store_true")
@@ -634,7 +635,7 @@ def main() -> int:
     snapshot_path = Path(args.snapshot).resolve()
     projection_path = Path(args.projection).resolve()
     try:
-        snapshot = load_verified_snapshot(snapshot_path)
+        snapshot = load_verified_snapshot(snapshot_path, args.graph_repo)
         projection = load_json(projection_path)
         errors = validate_projection(
             projection, projection_path, snapshot, snapshot_path

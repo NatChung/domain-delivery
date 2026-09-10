@@ -15,6 +15,9 @@ completion criterion。進入 Steps 02–08 前完整閱讀 matrix，再只讀�
 若該入口尚不存在，直接讀取當前 Hub 的 `.domain-delivery/skills/feature-delivery/SKILL.md`，
 並依該 installed release 的規則執行。來源選擇為 `prose-only, unenforced`，由 host／agent 負責。
 
+若 Hub 的 `hub.yaml` 宣告 external `graph`，或本輪要搬移 Graph／驗證搬移前 Snapshot，
+先讀 [Graph location adapter](../../docs/graph-location.md) 並套用 resolved paths，再執行下列 procedure。
+
 ## 先確認安裝版本
 
 先讀 Hub root 的 `workflow.lock`。lock 的 tag/commit 與 `.domain-delivery/`

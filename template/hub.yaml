@@ -18,7 +18,13 @@ hub_tracker:
 code_explorer:
   kind: unset          # e.g. codegraph | grep
 
-# Where authority nodes live inside this Hub's Domain Graph.
+# Optional external canonical Graph routing; see .domain-delivery/docs/graph-location.md.
+# graph:
+#   repository: ../domain-graph
+#   source: docs/domain
+#   index: domain-index/index.json
+
+# Authority registry path is relative to the Hub; update explicitly for external Graphs.
 authority:
   registry: docs/domain/authorities
 

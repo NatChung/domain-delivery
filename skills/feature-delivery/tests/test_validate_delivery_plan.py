@@ -1,5 +1,6 @@
 import copy
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -291,6 +292,21 @@ class DeliveryPlanProjectionCliTests(unittest.TestCase):
             text=True,
             capture_output=True,
         )
+
+    def test_projection_verifies_a_snapshot_with_explicit_external_graph(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            graph = root / "graph"
+            graph.mkdir()
+            manifest, snapshot = create_snapshot(graph)
+            moved = root / "snapshot"
+            shutil.copytree(manifest.parent, moved)
+            result = self.run_validator(root, moved / manifest.name, ready_projection(snapshot),
+                                        "--require-ready", "--graph-repo", str(graph))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            rejected = self.run_validator(root, moved / manifest.name, ready_projection(snapshot),
+                                          "--graph-repo", str(root))
+            self.assertNotEqual(rejected.returncode, 0)
 
     def test_exact_multi_repository_projection_coverage_passes(self):
         with tempfile.TemporaryDirectory() as directory:
