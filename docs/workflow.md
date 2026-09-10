@@ -136,7 +136,7 @@ folder。
 
 ## 7. Markdown source of truth 與 derived index
 
-Canonical hierarchy 如下：
+Canonical hierarchy 如下（相對於選定的 Graph repository root）：
 
 ```text
 docs/domain/                 Markdown-first canonical graph record
@@ -154,6 +154,10 @@ docs/domain/                 Markdown-first canonical graph record
 
 domain-index/index.json      deterministic, generated typed index
 ```
+
+Graph 可位於 Hub 或一個明確宣告的獨立 repository；路徑解析與 historical Snapshot
+verification 依 [Graph location adapter](graph-location.md)。Canonical record 維持單一份，
+不要求 submodule 或 publication copy；Snapshot 與 evidence 仍由 Hub 擁有。
 
 Kernel 會驗證 IDs、types、statuses、readiness 與 confirmation metadata。它會排序
 nodes 並輸出 content digests，讓 downstream snapshots 能 pin 精確 meaning。Index
@@ -300,7 +304,7 @@ ledger。因此每個 completed run 都能回答：「我們實作了哪個 doma
 | Artifact | Authority | 可修改？ |
 |---|---|---|
 | 本 repository 的 `docs/workflow.md` | shared method | versioned edits |
-| Hub `docs/domain/**` | 該 Hub 的 domain meaning | 可以，需保留 status／history |
+| Graph repository `docs/domain/**` | 該 Hub 的 domain meaning | 可以，需保留 status／history |
 | `domain-index/index.json` | generated validation／index | 只能 regenerate |
 | `specs/<feature>/snapshot/**` | feature execution basis | 不可；以新版本 supersede |
 | product-repo tests／contracts | executable projection | 可以，需依 snapshot |

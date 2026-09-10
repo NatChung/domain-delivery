@@ -17,6 +17,9 @@ meaning、Snapshot 或 evidence。
 若該入口尚不存在，直接讀取當前 Hub 的 `.domain-delivery/skills/delivery-hub/SKILL.md`，
 並依該 installed release 的規則執行。來源選擇為 `prose-only, unenforced`，由 host／agent 負責。
 
+若 Hub 的 `hub.yaml` 宣告 external `graph`，或本輪要搬移 Graph／驗證搬移前 Snapshot，
+先讀 [Graph location adapter](../../docs/graph-location.md) 並套用 resolved paths，再執行下列 procedure。
+
 ## 三個命令
 
 全部從 Hub root 執行，exit code 一致：`0` pass、`1` findings、`2` invalid input

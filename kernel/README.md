@@ -1,7 +1,7 @@
 # Domain Delivery Kernel
 
 The deterministic machinery shared by the Domain and Delivery lifecycles. The
-canonical graph record stays in Markdown inside each Delivery Hub; only
+canonical graph record stays in Markdown in a Hub or a separate Graph repository; only
 `confirmed` nodes are accepted semantic meaning.
 
 - method: [`../docs/workflow.md`](../docs/workflow.md)
@@ -82,6 +82,40 @@ that Markdown and verify the closure; it is a checking surface, not the meaning
 people edit. The manifest records both digests and refuses to overwrite an
 existing version. A correction creates a new directory such as `v2` and passes
 the prior snapshot digest through `--supersedes`.
+
+## Separate Graph repository
+
+`freeze`, `verify-snapshot`, `drift`, `record-result`, `declare-attestation` and
+`verify-evidence` accept `--graph-repo /path/to/graph-checkout`. Use it on every
+operation when the Snapshot lives outside its Graph repository, or when a
+compiled index is stored outside the Graph checkout. The path resolves Git
+objects; it is not stored as a machine-specific path in the immutable manifest.
+
+```bash
+python3 -B .domain-delivery/kernel/scripts/kernel.py verify-snapshot \
+  --snapshot specs/reminder-digest/snapshot/v1/snapshot-manifest.json \
+  --graph-repo ../domain-graph
+```
+
+Without this option, `freeze` resolves Git from the index directory and all
+Snapshot/evidence commands resolve it from the Snapshot directory, preserving
+the existing same-repository contract. The supported Python seam accepts the
+same resolver as an optional third argument:
+`verify_snapshot_against_graph(snapshot, manifest_path, graph_repo=Path(...))`.
+Adapters must forward their Graph checkout path to every verification call.
+
+The existing full `graph_commit`, repository-relative `graph_source_root` and
+`graph_index_digest` bind the entire reconstructed index and exact selected
+closure. A different clone containing the identical commit is valid; a repository
+missing the commit, an altered payload, or a mismatched index is rejected.
+Uncommitted Graph files and later commits do not change verification of a pinned
+Snapshot. Existing Snapshot bytes and schema remain unchanged. Historical
+Snapshots continue to need a checkout containing their original commit and
+source layout; relocating current Graph files does not rewrite that history.
+
+This resolver does not assert repository ownership, remote URL, branch membership
+or human authority. Those belong to the adapter and publication policy. No Git
+fetch or fallback to another checkout occurs automatically.
 
 ## Evidence
 

@@ -1,6 +1,6 @@
 {
   "name": "domain-delivery",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Two-lane Domain Graph and Feature Delivery workflow with a deterministic integrity kernel",
   "author": {
     "name": "Nat Chung",

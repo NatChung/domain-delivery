@@ -182,6 +182,23 @@ class DoctorTests(unittest.TestCase):
             self.assertEqual(result.returncode, PASS, result.stdout + result.stderr)
             self.assertIn("healthy", result.stdout)
 
+    def test_doctor_accepts_explicit_external_graph_and_rejects_missing_entry(self):
+        with FakePackage() as package, HubDir() as hub:
+            run("init", "--hub", str(hub.path), "--package", str(package.path),
+                "--project", "example")
+            graph = hub.path.parent / "graph"
+            graph.mkdir()
+            git(graph, "init", "-q")
+            shutil.move(str(hub.path / "docs/domain"), str(graph / "domain"))
+            args = ("doctor", "--hub", str(hub.path), "--package", str(package.path),
+                    "--graph-repo", "../graph", "--graph-source", "domain")
+            result = run(*args)
+            self.assertEqual(result.returncode, PASS, result.stdout + result.stderr)
+            (graph / "domain/INDEX.md").unlink()
+            failed = run(*args)
+            self.assertEqual(failed.returncode, FAIL, failed.stdout + failed.stderr)
+            self.assertIn("Graph entry", failed.stdout)
+
     def test_doctor_reports_a_lock_that_does_not_match_the_installation(self):
         with HubDir() as hub:
             hub.init()

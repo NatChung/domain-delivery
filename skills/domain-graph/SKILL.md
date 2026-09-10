@@ -7,13 +7,16 @@ description: 維護 Delivery Hub 的 Domain lane：從 journey/domain evidence �
 
 這是 Delivery Hub 的 Domain lane router。它把 evidence 變成可審查的 graph
 candidates，再由 identified PM/domain authority 決定哪些 meaning 能成為 confirmed
-truth。Hub 的 `docs/domain/**` 是 canonical Markdown record；
+truth。resolved Graph checkout 的 `docs/domain/**` 是 canonical Markdown record；
 `domain-index/index.json` 只由 `.domain-delivery/kernel/scripts/kernel.py` 產生，
 Skill 不複製 kernel implementation。
 
 在 Hub 中選用本 Skill 時，先依 Hub 的 `docs/skill-entry.md` 確認 pinned procedure 與來源；
 若該入口尚不存在，直接讀取當前 Hub 的 `.domain-delivery/skills/domain-graph/SKILL.md`，
 並依該 installed release 的規則執行。來源選擇為 `prose-only, unenforced`，由 host／agent 負責。
+
+若 Hub 的 `hub.yaml` 宣告 external `graph`，或本輪要搬移 Graph／驗證搬移前 Snapshot，
+先讀 [Graph location adapter](../../docs/graph-location.md) 並套用 resolved paths，再執行下列 procedure。
 
 ## 先確認安裝版本
 

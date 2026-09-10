@@ -635,10 +635,22 @@ def cmd_doctor(args) -> int:
                 f"Commit the submodule move and the lock together."
             )
 
-    for relative in ("hub.yaml", "CONTEXT-MAP.md", "docs/domain/INDEX.md",
+    for relative in ("hub.yaml", "CONTEXT-MAP.md",
                      ".claude-plugin/marketplace.json", ".agents/plugins/marketplace.json"):
         if not (hub_root / relative).is_file():
             findings.append(f"missing Hub file: {relative}")
+
+    graph_root = (hub_root / args.graph_repo).resolve() if args.graph_repo else hub_root
+    graph_source = Path(args.graph_source)
+    if graph_source.is_absolute() or ".." in graph_source.parts:
+        findings.append("Graph source must be a relative path inside its repository")
+    elif not (graph_root / graph_source / "INDEX.md").is_file():
+        findings.append(f"missing Graph entry: {graph_root / graph_source / 'INDEX.md'}")
+    if args.graph_repo:
+        resolved = subprocess.run(["git", "-C", str(graph_root), "rev-parse", "--show-toplevel"],
+                                  capture_output=True, text=True)
+        if resolved.returncode != 0 or Path(resolved.stdout.strip()).resolve() != graph_root:
+            findings.append("Graph repository must be an explicit Git checkout root")
 
     hub_yaml = hub_root / "hub.yaml"
     if hub_yaml.is_file() and PLACEHOLDER in hub_yaml.read_text(encoding="utf-8"):
@@ -792,6 +804,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--skill-source", metavar="SKILL.md",
         help="compare a supplied lifecycle Skill package copy against the installed release",
     )
+    p_doctor.add_argument("--graph-repo", help="Graph checkout path, relative to Hub or absolute")
+    p_doctor.add_argument("--graph-source", default="docs/domain", help="Graph source path relative to its repository")
     p_doctor.set_defaults(func=cmd_doctor)
 
     p_upgrade = sub.add_parser("upgrade", help="move the Hub to the checked-out version")

@@ -3,6 +3,15 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.4.0
+
+- Support an explicit external Graph Git checkout for freeze, Snapshot verification,
+  drift and evidence commands without rewriting existing Snapshot schemas.
+- Add external Graph routing guidance, doctor location overrides and planning
+  validation forwarding. Existing same-repository defaults remain compatible.
+- Verify wrong/missing resolvers, content binding, clone portability and the full
+  cross-repository Snapshot/evidence flow with synthetic CLI tests.
+
 ## 0.3.0
 
 - Add read-only `doctor --skill-source` verification against all released paths
