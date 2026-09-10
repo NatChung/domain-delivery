@@ -1,6 +1,6 @@
 ---
 name: feature-delivery
-description: 將 PO 的 tracker request 依序轉成 Feature Intent、Domain Graph active slice、immutable Snapshot、executable check projection、repository packets、implementation loops 與 bound evidence。當使用者提供 ticket key/內容並要求理解需求、啟動 feature delivery，或要求從 Feature Delivery 的 numbered artifact/step 接續時使用；每個 gate 未通過即停止，不因啟動流程而自動取得外部寫入或 product-code mutation 權限。
+description: 將 PO 的 tracker request 依序轉成 Feature Intent、Domain Graph active slice、immutable Snapshot、executable check projection、repository packets、implementation loops 與 bound evidence。當使用者提供 ticket key/內容並要求理解需求、啟動 feature delivery，或要求從 Feature Delivery 的 numbered artifact/step 接續時使用；每個 gate 未通過即停止下游 delivery，不因啟動流程而自動取得外部寫入或 product-code mutation 權限。
 ---
 
 # Feature Delivery
@@ -22,7 +22,7 @@ completion criterion。進入 Steps 02–08 前完整閱讀 matrix，再只讀�
 
 - 使用者提供 ticket key/URL/content 且沒有 valid prior artifact：從 Step 01 開始。
 - 使用者提供 numbered artifact 或明確指定 step：先驗證其 actual producer 的 gate；prose-only step 依該 reference 的 completion criteria，optional Step 03 依 report 指定回 Step 02，不以數字猜 predecessor。
-- 使用者要求完整 delivery：依 01 → 02 → optional 03 → 02 → 04 → 05 → 06 → 07 → 08；第一個 non-ready/unauthorized state 立即停止。
+- 使用者要求完整 delivery：依 01 → 02 → optional 03 → 02 → 04 → 05 → 06 → 07 → 08；第一個 non-ready/unauthorized state 停止下游 delivery；當步補正與接續依 [matrix Gate rule](references/00-delivery-artifact-matrix.md#gate-rule)。
 - Skill-owned reference、feature planning artifact、spec、packet 與 raw output 使用 producer step prefix。Kernel-owned `DOMAIN.md`、`domain-payload.json`、`snapshot-manifest.json`、`check-ledger.jsonl` 與既有 schema/script 名稱保留 machine contract，不強加 prefix。
 
 ## Step routing
@@ -60,7 +60,7 @@ Step 02 若發現需要新增/修改 canonical node、補 broad journey/capabili
 
 ## 完成與停止
 
-- 每一步回傳該 reference 定義的 artifact/result、status、阻擋原因與下一個合法 step；kernel-owned 與 product-repo outputs 保留其 machine contract 名稱。
+- 每一步回傳該 reference 定義的 artifact/result、status、阻擋原因與下一個合法 step；依 [matrix 的 continuation rule](references/00-delivery-artifact-matrix.md#continuation-within-the-active-request) 判斷接續或結束。Kernel-owned 與 product-repo outputs 保留其 machine contract 名稱。
 - Non-ready state 不偷偷繼續；需要人類決定時準備 numbered decision packet，未獲寫回授權時只回傳內容。
 - `verify-evidence` exit `0` 但缺 external actor authentication、artifact retention 或 terminal anchor 時，狀態是 `kernel_verified_unanchored`，不是完整完成。
 - Domain feedback 只更新持續演進的 graph lane；永遠不修改 frozen Snapshot。

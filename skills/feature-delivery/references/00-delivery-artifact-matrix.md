@@ -42,3 +42,12 @@ Step 03 只把 implementation evidence 回饋 Step 02；它不是通往 Step 04 
 ## Gate rule
 
 An Agent stops delivery progress at the first non-ready state and returns that artifact with its blocking reasons. Step 07 may call Step 08 only to append/report a failed run from real output; this preserves evidence without turning the state ready. It may gather Step 03 evidence only when Step 02 explicitly requests it. Human confirmation, external writes and product implementation still require the authorization stated by the active request; advancing the artifact chain does not broaden permission.
+
+
+### Continuation within the active request
+
+Continuation and stopping are `prose-only, unenforced`: validators establish artifact readiness, not the user's authorized scope or an agent's decision to end a turn.
+
+For a request covering multiple steps, report each completed artifact/status and continue to the next routed step when its entry conditions and existing authorization are satisfied. A step report is a progress update, not a new approval gate. A request limited to one step ends at that step's completion criterion. Use the authorization already present in the active request; obtain a decision only for a missing permission, unresolved authority, changed scope or other blocker required by the current reference.
+
+A non-ready result blocks downstream delivery. Continue the current reference's authorized repair or evidence-gathering route when available; report a blocker requiring human input with the exact decision and next legal action. Routine implementation failures follow Step 07's repo loop. Its final check coverage and rerun conditions are owned by [Step 07](07-run-repository-agent-loops.md).

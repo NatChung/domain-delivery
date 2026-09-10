@@ -49,7 +49,7 @@ Behaviour cycles 全部 green 後：
 
 - 對完成的 slice 做 fresh review；
 - 只在 observable behaviour 仍受 tests 保護時 refactor；
-- 執行 packet 的 full native quality/static/architecture commands；
+- 執行 packet 的 full native quality/static/architecture commands，同時依下節保存 required checks 的 raw output 與 exit code；
 - 若 repo 有 fingerprinted brownfield baseline，確認 violation set 沒增加，並在減少時 ratchet baseline；
 - Snapshot contradiction 不能列為 brownfield exception。
 
@@ -57,7 +57,7 @@ Fresh review 找到 blocking bug 時回 red/green cycle；找到 Snapshot contra
 
 ## 4. 產生 Step 08 inputs
 
-每個 packet `evidence_inputs` 指定一個 frozen `(repository_id, check_id)`、planned checker path 與 `/tmp/07-<repo>-<check>.txt` output。以真實 checker 執行並保存 stdout/stderr 與 exit code；不要手寫成功文字或把歷史 log 當成本次 output。
+每個 packet `evidence_inputs` 指定一個 frozen `(repository_id, check_id)`、planned checker path 與 `/tmp/07-<repo>-<check>.txt` output。在本次 loop 的真實 checker 執行時保存 stdout/stderr 與 exit code；本次已保存且符合下述最終狀態條件的結果可直接交給 Step 08。缺少 raw output 時重新執行 checker，不能補寫成功文字或使用歷史 log。
 
 建議 adapter 形狀：
 
@@ -69,6 +69,16 @@ check_exit=$?
 實際 shell wrapper 必須保留真實 exit code，並把相同數字傳給 Step 08 `record-result --exit-code`。Exit contract：`0` pass、`1` fail、`2` invalid、`3` not applicable；required check 的 `3` 永遠不能完成 delivery。
 
 Checker file 必須是 Step 05/06 已規劃的同一路徑。若實作時需要換 checker，先更新 Step 05/06 artifacts並重新 validation；若 stable required check meaning 改變，建立 snapshot v2。
+
+### 檢查完成與重跑條件
+
+本節為 `prose-only, unenforced`：目前由 operator 確認執行時狀態與結果有效性，kernel 不證明 output 是在哪個環境執行。
+
+以 packet 與 frozen required checks 的完整集合為完成標準。Slice 的最小 red/green command 不取代 packet 的 full native checks。當完整集合已在本次最終狀態執行、結果通過、raw outputs 已保存且 fresh review 無 blocking finding，就進入 Step 08；步驟切換本身不要求再跑相同檢查。
+
+保存執行時的 repo commit/dirty state、checker、command、依賴與相關環境資訊，並在 Step 08 綁定前比對。若後續 code、tests、checker、commit/dirty state、依賴或相關環境改變，使結果不再對應將綁定的狀態，先重跑適用的 checks；無法確定影響範圍時重跑完整集合。每筆交給 Step 08 的 required result 都必須對應其實際執行狀態，不能把舊 output 綁成新狀態的 pass。
+
+Review findings、新 failure、未解決疑慮或 repo 明定的檢查頻率，也構成重跑／擴大檢查的依據。重新執行後保存新的 output 與 exit code；required checks、fresh review、ratchet 與 independent attestation 的條件全部保留。
 
 ## 5. Packet completion
 
