@@ -1,6 +1,20 @@
 {
   "synthetic": true,
+  "source_note": "這是完整的合成 Ticket 提供內容。下列欄位與 comments、attachments、links 均已完整列出；空陣列表示確實沒有項目，null 表示此 Ticket 未使用該欄位，沒有其他自訂欄位或外部需求來源。",
   "key": "TCK-123",
+  "url": "https://tracker.example.com/browse/TCK-123",
+  "project": "SYNTHETIC",
+  "issue_type": "Story",
+  "status": "Open",
   "summary": "設定商品提醒時可選擇尺寸",
-  "description": "顧客設定商品提醒時可以選擇尺寸。"
+  "description": "顧客設定商品提醒時可以選擇尺寸。",
+  "acceptance_criteria": [],
+  "component": [],
+  "labels": [],
+  "delivery_lane": null,
+  "parent": null,
+  "epic": null,
+  "comments": [],
+  "attachments": [],
+  "links": []
 }

@@ -13,6 +13,25 @@ RUNNER = SKILL_ROOT / "scripts" / "run_intake_evals.py"
 
 
 class IntakeEvalCliTests(unittest.TestCase):
+    def test_reminder_size_fixture_supplies_complete_source_inventory(self):
+        # Step 01 readiness requires actual collection coverage; omitted inputs
+        # cannot serve as evidence that a collection is empty.
+        ticket = json.loads(
+            (SKILL_ROOT / "tests/fixtures/intake/reminder-size/ticket.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        required_fields = {
+            "key", "url", "project", "issue_type", "status", "summary",
+            "description", "acceptance_criteria", "component", "labels",
+            "delivery_lane", "parent", "epic",
+        }
+        self.assertFalse(required_fields - ticket.keys(), "missing ticket fields")
+        for collection in ("comments", "attachments", "links"):
+            with self.subTest(collection=collection):
+                self.assertIn(collection, ticket)
+                self.assertIsInstance(ticket[collection], list)
+
     def write_case(self, root):
         case = root / "reminder-size"
         case.mkdir()
