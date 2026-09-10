@@ -13,6 +13,10 @@ Domain 與 Delivery lane 分別由 [`domain-graph`](../domain-graph/SKILL.md) �
 [`feature-delivery`](../feature-delivery/SKILL.md) 負責；本 Skill 不碰 domain
 meaning、Snapshot 或 evidence。
 
+在 Hub 中選用本 Skill 時，先依 Hub 的 `docs/skill-entry.md` 確認 pinned procedure 與來源；
+若該入口尚不存在，直接讀取當前 Hub 的 `.domain-delivery/skills/delivery-hub/SKILL.md`，
+並依該 installed release 的規則執行。來源選擇為 `prose-only, unenforced`，由 host／agent 負責。
+
 ## 三個命令
 
 全部從 Hub root 執行，exit code 一致：`0` pass、`1` findings、`2` invalid input
@@ -84,6 +88,17 @@ commit，即使追蹤的 bytes 一個都沒變，也是 finding——lock 的 ta
 upstream，不是留在 Hub 裡。
 
 任何 lane 工作開始前先跑 `doctor`；`1` 以上都先處理完再繼續。
+
+## 檢查指定 Skill 來源
+
+```bash
+python3 -B .domain-delivery/skills/delivery-hub/scripts/hub.py doctor \
+  --skill-source /absolute/package/skills/feature-delivery/SKILL.md
+```
+
+指定來源必須是三個 lifecycle 的 SKILL.md 之一。Doctor 以 installed package 的 tracked file 清單逐檔比對來源套件，不只比 VERSION 或 router；cache 不需要 Git metadata。缺檔或 bytes 不同是 finding。原有 lock／HEAD／digest／gitlink 檢查仍全部執行。
+
+這只驗證 caller 指定的來源，不能自動發現 host 實際載入路徑，也不驗證 host 額外檔案或 agent 是否遵循文件；actual-source declaration 是 `prose-only, unenforced`。來源不同時改讀 Hub pinned procedure；不要為迎合 cache 而改 lock。
 
 ## upgrade
 

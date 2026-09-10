@@ -3,6 +3,20 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## 0.3.0
+
+- Add read-only `doctor --skill-source` verification against all released paths
+  and bytes, including Git-less host caches. Existing installation checks still
+  apply; caller-declared source parity is not automatic host authentication.
+- Install a pinned Skill entry through template and idempotent migration,
+  preserving each Hub's existing workflow scope and immutable delivery records.
+- Present the package release as the current version authority; retain the
+  historical method 1.0 acceptance label as history only.
+- Clarify authorized continuation and current-run check completion without
+  relaxing downstream gates, test-first loops, required checks or attestation.
+- Fix complete source inventory and equivalent requiredness questions in the
+  synthetic intake forward case; use package-root maintenance commands.
+
 ## 0.2.8
 
 - Translate the canonical delivery workflow into Traditional Chinese without
