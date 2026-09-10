@@ -14,7 +14,7 @@
     "provided:TCK-123/field/description"
   ],
   "required_unknown_question_terms": [
-    ["尺寸", "選填", "必填"]
+    ["尺寸", "必填"]
   ],
   "forbidden_observed_statements": [
     "尺寸為必填"

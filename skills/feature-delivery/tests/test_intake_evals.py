@@ -13,6 +13,25 @@ RUNNER = SKILL_ROOT / "scripts" / "run_intake_evals.py"
 
 
 class IntakeEvalCliTests(unittest.TestCase):
+    def test_reminder_size_fixture_supplies_complete_source_inventory(self):
+        # Step 01 readiness requires actual collection coverage; omitted inputs
+        # cannot serve as evidence that a collection is empty.
+        ticket = json.loads(
+            (SKILL_ROOT / "tests/fixtures/intake/reminder-size/ticket.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        required_fields = {
+            "key", "url", "project", "issue_type", "status", "summary",
+            "description", "acceptance_criteria", "component", "labels",
+            "delivery_lane", "parent", "epic",
+        }
+        self.assertFalse(required_fields - ticket.keys(), "missing ticket fields")
+        for collection in ("comments", "attachments", "links"):
+            with self.subTest(collection=collection):
+                self.assertIn(collection, ticket)
+                self.assertIsInstance(ticket[collection], list)
+
     def write_case(self, root):
         case = root / "reminder-size"
         case.mkdir()
@@ -74,6 +93,38 @@ class IntakeEvalCliTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("PASS reminder-size", result.stdout)
+
+    def test_requiredness_question_accepts_both_phrasings_but_not_size_range(self):
+        for question, expected_exit in (
+            ("尺寸為選填或必填？", 0),
+            ("尺寸是否必填，以及可選尺寸範圍為何？", 0),
+            ("可選尺寸範圍為何？", 1),
+        ):
+            with self.subTest(question=question), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                cases, outputs = root / "cases", root / "outputs"
+                cases.mkdir()
+                self.write_case(cases)
+                # Use the committed case's semantic expectation, so this guards
+                # its intended requiredness concept rather than a copied phrase.
+                expected_path = cases / "reminder-size/expected.json"
+                expected = json.loads(expected_path.read_text(encoding="utf-8"))
+                committed = json.loads(
+                    (SKILL_ROOT / "tests/fixtures/intake/reminder-size/expected.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                expected["required_unknown_question_terms"] = committed[
+                    "required_unknown_question_terms"
+                ]
+                expected_path.write_text(json.dumps(expected), encoding="utf-8")
+                actual = ready_intent()
+                actual["evidence"]["unknown"][0]["question"] = question
+                self.write_output(outputs, actual)
+                result = self.run_evals(cases, outputs)
+                self.assertEqual(result.returncode, expected_exit, result.stdout + result.stderr)
+                if expected_exit == 1:
+                    self.assertIn("missing unknown question", result.stdout)
 
     def test_case_fails_when_required_domain_term_is_missing(self):
         actual = ready_intent()

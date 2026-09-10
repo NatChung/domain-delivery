@@ -13,23 +13,15 @@ Python validators 是 executable shape 與 gate authority：
 
 ## Deterministic validation
 
-執行 Skill tests、plugin-kernel tests 與 packaging validation：
+從 shared package repository root 執行 Skill、kernel 與 packaging／Hub CLI tests（不是從 consumer Hub root）：
 
 ```bash
-python3 -B scripts/check_doc_path_references.py
-python3 -B -m unittest discover -s scripts/tests -v
-python3 -B -m unittest discover -s .domain-delivery/skills/feature-delivery/tests -v
-python3 -B -m unittest discover \
-  -s .domain-delivery/kernel/tests -v
-python3 -B /Users/natchung/.codex/skills/.system/skill-creator/scripts/quick_validate.py \
-  .agents/skills/feature-delivery
+python3 -B -m unittest discover -s kernel/tests
+python3 -B -m unittest discover -s skills/feature-delivery/tests
+python3 -B -m unittest discover -s tests
 ```
 
-前兩個命令守住 hub folder 與 active Markdown／HTML 的 reference integrity；
-若搬動 Skill、Plugin 或 canonical docs，finding 會用 `file:line` 指出要一起
-更新的文件。Active docs 的歷史或故意未建立 reference 只能在
-`scripts/path-reference-policy.json` 用「檔案＋該行內容」精確保留；不能
-allow 整份 active 文件。`docs/archive/` 不屬於 active-document scan scope。
+修改 Markdown 後核對 local links、router pointers 與本次 diff。若同時修改 consumer Hub 的 adapter，另依該 Hub 自己的 guides 執行文件路徑檢查；Hub 專屬 checker 不屬於 shared package 的 command surface。
 
 Contract parity tests 必須同時證明 schema/runtime 的 top-level 與 nested required fields、enums、schema versions 及 ID patterns 一致。Runtime-only tests 不足以宣稱 mirror 沒有 drift。
 
@@ -40,8 +32,8 @@ Contract parity tests 必須同時證明 schema/runtime 的 top-level 與 nested
 ```bash
 eval_outputs="$(mktemp -d)"
 # Independent invocation writes ${eval_outputs}/<case-id>.json here.
-python3 -B .domain-delivery/skills/feature-delivery/scripts/run_intake_evals.py \
-  --cases .domain-delivery/skills/feature-delivery/tests/fixtures/intake \
+python3 -B skills/feature-delivery/scripts/run_intake_evals.py \
+  --cases skills/feature-delivery/tests/fixtures/intake \
   --outputs "$eval_outputs"
 ```
 
