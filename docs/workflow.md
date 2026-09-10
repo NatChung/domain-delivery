@@ -1,6 +1,10 @@
 # AI Coding Agent 交付工作流程
 
-狀態：Accepted，version 1.0
+狀態：Accepted
+
+版本：方法隨 Domain Delivery package 一起發布；package 版本見 [VERSION](../VERSION)，
+各 Hub 的精確 tag、commit 與 digest 見其 `workflow.lock`。
+歷史接受紀錄：2026-09-03 的方法基準標記為 1.0；它不是另一條 current release 版本。
 
 審查日期：2026-09-03 — 已逐節對照 16-part teaching reader；未發現語意偏移。
 本文件是方法的唯一來源；reader 保留為教學材料。
@@ -305,7 +309,7 @@ ledger。因此每個 completed run 都能回答：「我們實作了哪個 doma
 
 ## 實作狀態
 
-Version 1.0 定義完整 contract。這裡刻意不追蹤各 Hub 的 maturity；每個 Hub 在自己的
+本 package release 定義完整 contract。這裡刻意不追蹤各 Hub 的 maturity；每個 Hub 在自己的
 current-state authority 記錄 live state，通常是透過 Hub adapter 到達的
 `docs/domain/INDEX.md`。Hub adapter 必須明確 map 到此 lifecycle，才能宣稱
 conformance。

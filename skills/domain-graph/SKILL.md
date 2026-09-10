@@ -11,6 +11,10 @@ truth。Hub 的 `docs/domain/**` 是 canonical Markdown record；
 `domain-index/index.json` 只由 `.domain-delivery/kernel/scripts/kernel.py` 產生，
 Skill 不複製 kernel implementation。
 
+在 Hub 中選用本 Skill 時，先依 Hub 的 `docs/skill-entry.md` 確認 pinned procedure 與來源；
+若該入口尚不存在，直接讀取當前 Hub 的 `.domain-delivery/skills/domain-graph/SKILL.md`，
+並依該 installed release 的規則執行。來源選擇為 `prose-only, unenforced`，由 host／agent 負責。
+
 ## 先確認安裝版本
 
 先讀 Hub root 的 `workflow.lock`。lock 的 tag/commit 與 `.domain-delivery/`

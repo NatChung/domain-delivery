@@ -1,7 +1,7 @@
 {
   "name": "domain-delivery",
   "displayName": "Domain Delivery",
-  "version": "0.2.8",
+  "version": "0.3.0",
   "description": "Two-lane Domain Graph and Feature Delivery workflow with a deterministic integrity kernel",
   "author": {
     "name": "Nat Chung",
@@ -10,6 +10,11 @@
   "homepage": "https://github.com/NatChung/domain-delivery",
   "repository": "https://github.com/NatChung/domain-delivery",
   "license": "MIT",
-  "keywords": ["ddd", "domain-graph", "delivery", "evidence"],
+  "keywords": [
+    "ddd",
+    "domain-graph",
+    "delivery",
+    "evidence"
+  ],
   "skills": "./skills/"
 }

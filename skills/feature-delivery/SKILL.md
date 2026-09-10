@@ -11,6 +11,10 @@ description: 將 PO 的 tracker request 依序轉成 Feature Intent、Domain Gra
 numbered reference 擁有該步的 procedure、status computation、machine command 與
 completion criterion。進入 Steps 02–08 前完整閱讀 matrix，再只讀當下 step reference。
 
+在 Hub 中選用本 Skill 時，先依 Hub 的 `docs/skill-entry.md` 確認 pinned procedure 與來源；
+若該入口尚不存在，直接讀取當前 Hub 的 `.domain-delivery/skills/feature-delivery/SKILL.md`，
+並依該 installed release 的規則執行。來源選擇為 `prose-only, unenforced`，由 host／agent 負責。
+
 ## 先確認安裝版本
 
 先讀 Hub root 的 `workflow.lock`。lock 的 tag/commit 與 `.domain-delivery/`

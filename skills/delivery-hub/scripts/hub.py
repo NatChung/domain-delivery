@@ -539,6 +539,34 @@ def cmd_init(args) -> int:
     return PASS
 
 
+def skill_source_findings(package_root: Path, supplied: Path) -> list[str]:
+    """Compare a selected package copy; its host cache need not contain Git."""
+    try:
+        source = supplied.expanduser().resolve()
+    except (OSError, RuntimeError) as exc:
+        raise HubError(f"cannot resolve --skill-source {supplied}: {exc}") from exc
+    lifecycle_skills = {"delivery-hub", "domain-graph", "feature-delivery"}
+    if (source.name != "SKILL.md" or source.parent.name not in lifecycle_skills
+            or source.parent.parent.name != "skills" or not source.is_file()):
+        raise HubError(
+            f"{supplied}: --skill-source must name an existing "
+            "skills/<lifecycle-skill>/SKILL.md"
+        )
+    source_root = source.parents[2]
+    findings = []
+    for relative in released_files(package_root):
+        selected = source_root / relative
+        if not selected.is_file():
+            findings.append(f"selected Skill source missing released file: {relative}")
+            continue
+        try:
+            if selected.read_bytes() != (package_root / relative).read_bytes():
+                findings.append(f"selected Skill source changed released file: {relative}")
+        except OSError as exc:
+            raise HubError(f"cannot compare selected Skill source {relative}: {exc}") from exc
+    return findings
+
+
 def cmd_doctor(args) -> int:
     hub_root = Path(args.hub).resolve()
     findings: list[str] = []
@@ -620,11 +648,16 @@ def cmd_doctor(args) -> int:
     for migration in pending:
         findings.append(f"pending migration: {migration.name}")
 
+    if args.skill_source:
+        findings.extend(skill_source_findings(package_root, Path(args.skill_source)))
+
     if findings:
         print(f"{len(findings)} finding(s):")
         for finding in findings:
             print(f"  - {finding}")
         return FAIL
+    if args.skill_source:
+        print("selected Skill source matches released files; host selection is not verified")
     print(f"healthy: {lock['package']} {lock['tag'] or 'untagged'} at {lock['commit'][:12]}")
     return PASS
 
@@ -755,6 +788,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_doctor = sub.add_parser("doctor", help="report on the installation (read-only)")
     common(p_doctor)
+    p_doctor.add_argument(
+        "--skill-source", metavar="SKILL.md",
+        help="compare a supplied lifecycle Skill package copy against the installed release",
+    )
     p_doctor.set_defaults(func=cmd_doctor)
 
     p_upgrade = sub.add_parser("upgrade", help="move the Hub to the checked-out version")

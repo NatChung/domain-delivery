@@ -31,5 +31,8 @@ Rules:
 - `init` records every migration that exists at install time as already
   applied. A new Hub has nothing to migrate.
 
-There are no migrations in the 0.1.0 release. The mechanism ships so that the
-first real one needs no new machinery.
+The 0.1.0 release contained no migrations. Release 0.3.0 adds
+`001-pinned-skill-entry`: it installs `docs/skill-entry.md` and appends a scoped
+pointer to both host guides without replacing local policies. An existing,
+different entry file or managed pointer is refused before guide edits, so a
+maintainer can reconcile it without silently losing instructions.

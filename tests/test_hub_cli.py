@@ -5,6 +5,7 @@ observes only exit codes, stdout/stderr and files on disk.
 """
 
 import json
+from contextlib import ExitStack
 import shutil
 import subprocess
 import sys
@@ -1052,3 +1053,98 @@ class VersionOrderingTests(unittest.TestCase):
         self.assertLess(hub_module.version_key("1.0.0-alpha.1"), hub_module.version_key("1.0.0-alpha.2"))
         self.assertLess(hub_module.version_key("0.9.9"), hub_module.version_key("1.0.0-alpha"))
         self.assertLess(hub_module.version_key("1.0.0"), hub_module.version_key("1.0.1"))
+
+
+class DoctorSkillSourceTests(unittest.TestCase):
+    """Verify a supplied host cache against the Hub's installed release."""
+
+    def setUp(self):
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.package = self.stack.enter_context(PackageCopy())
+        self.hub = self.stack.enter_context(HubDir())
+        version = (self.package.path / "VERSION").read_text().strip()
+        git(self.package.path, "tag", f"v{version}")
+        git(self.hub.path, "-c", "protocol.file.allow=always", "submodule", "add",
+            "--name", SUBMODULE_NAME, str(self.package.path), SUBMODULE_NAME)
+        result = run("init", "--hub", str(self.hub.path), "--project", "example")
+        self.assertEqual(result.returncode, PASS, result.stderr)
+        self.hub.commit_all("install")
+        temporary = self.stack.enter_context(tempfile.TemporaryDirectory())
+        self.cache = Path(temporary) / "host-cache"
+        shutil.copytree(self.package.path, self.cache, ignore=shutil.ignore_patterns(".git"))
+        self.source = self.cache / "skills/feature-delivery/SKILL.md"
+
+    def doctor(self, source=None):
+        return run("doctor", "--hub", str(self.hub.path),
+                   "--skill-source", str(source or self.source))
+
+    def test_matching_gitless_cache_passes_without_changing_content(self):
+        def contents(root):
+            return {str(p.relative_to(root)): p.read_bytes()
+                    for p in root.rglob("*") if p.is_file() and ".git" not in p.parts}
+        before = contents(self.hub.path), contents(self.cache)
+        self.assertFalse((self.cache / ".git").exists())
+        result = self.doctor()
+        self.assertEqual(result.returncode, PASS, result.stdout + result.stderr)
+        self.assertIn("selected Skill source matches released files", result.stdout)
+        self.assertEqual((contents(self.hub.path), contents(self.cache)), before)
+
+    def test_equal_router_and_version_do_not_hide_changed_package_files(self):
+        for relative in ("skills/feature-delivery/references/01-understand-request.md",
+                         "kernel/scripts/kernel.py", "docs/workflow.md"):
+            with self.subTest(relative=relative):
+                target = self.cache / relative
+                original = target.read_bytes()
+                target.write_bytes(original + b"\nchanged\n")
+                result = self.doctor()
+                self.assertEqual(result.returncode, FAIL, result.stdout + result.stderr)
+                self.assertIn(f"changed released file: {relative}", result.stdout)
+                self.assertNotIn("healthy:", result.stdout)
+                target.write_bytes(original)
+
+    def test_missing_released_file_is_a_finding(self):
+        relative = "kernel/scripts/kernel.py"
+        (self.cache / relative).unlink()
+        result = self.doctor()
+        self.assertEqual(result.returncode, FAIL, result.stdout + result.stderr)
+        self.assertIn(f"missing released file: {relative}", result.stdout)
+
+    def test_invalid_source_paths_are_clean_errors(self):
+        unrelated = self.cache / "skills/unrelated/SKILL.md"
+        unrelated.parent.mkdir()
+        unrelated.write_bytes(self.source.read_bytes())
+        for source in (self.cache / "missing/SKILL.md", self.cache / "VERSION", unrelated):
+            with self.subTest(source=source):
+                result = self.doctor(source)
+                self.assertEqual(result.returncode, INVALID, result.stdout + result.stderr)
+                self.assertIn("--skill-source must name", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+
+    def test_matching_source_does_not_bypass_lock_digest_or_commit_checks(self):
+        lock = self.hub.lock()
+        lock["package_digest"] = "sha256:" + "0" * 64
+        lock["commit"] = "0" * 40
+        (self.hub.path / "workflow.lock").write_text(json.dumps(lock))
+        result = self.doctor()
+        self.assertEqual(result.returncode, FAIL, result.stdout + result.stderr)
+        self.assertIn("package digest does not match", result.stdout)
+        self.assertIn("checked-out", result.stdout)
+        self.assertIn("committed gitlink", result.stdout)
+        self.assertNotIn("healthy:", result.stdout)
+
+    def test_matching_source_does_not_bypass_missing_gitlink(self):
+        git(self.hub.path, "rm", "-q", "--cached", SUBMODULE_NAME)
+        git(self.hub.path, "commit", "-q", "-m", "remove gitlink")
+        result = self.doctor()
+        self.assertEqual(result.returncode, FAIL, result.stdout + result.stderr)
+        self.assertIn("history records no", result.stdout)
+        self.assertIn("gitlink", result.stdout)
+
+    def test_unresolvable_source_path_is_a_clean_error(self):
+        loop = self.cache / "loop"
+        loop.symlink_to("loop")
+        result = self.doctor(loop / "skills/feature-delivery/SKILL.md")
+        self.assertEqual(result.returncode, INVALID, result.stdout + result.stderr)
+        self.assertIn("cannot resolve --skill-source", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)

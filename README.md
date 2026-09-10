@@ -21,7 +21,7 @@ package as a submodule at the fixed path `.domain-delivery/` and pin a tag:
 
 ```bash
 git submodule add https://github.com/NatChung/domain-delivery.git .domain-delivery
-git -C .domain-delivery checkout v0.2.8
+git -C .domain-delivery checkout v0.3.0
 python3 -B .domain-delivery/skills/delivery-hub/scripts/hub.py init --project my-product
 ```
 
@@ -54,8 +54,15 @@ examples/             synthetic artifacts; never installed into a Hub
 tests/                behaviour tests for the Hub commands
 ```
 
-Both hosts read the same bytes: `.claude-plugin/marketplace.json` and
+Both host marketplace configurations select the same local package: `.claude-plugin/marketplace.json` and
 `.agents/plugins/marketplace.json` in the Hub both point at `./.domain-delivery`.
+
+The host may still expose a cached Skill from another installation. The Hub's
+`docs/skill-entry.md` routes selected Domain Delivery tasks to the pinned
+procedure. Use `doctor --skill-source <SKILL.md>` to compare a declared source
+against released paths and bytes; this does not auto-detect host selection or
+prove what an agent followed. The source-selection step is `prose-only,
+unenforced` because it is performed by the host/agent.
 
 ## Design boundaries
 
