@@ -715,13 +715,15 @@ def verify_index_at_commit(index: dict[str, Any], commit: str, cwd: Path) -> Non
         raise KernelError("graph index is not the deterministic index of the pinned commit")
 
 
-def verify_snapshot_against_graph(snapshot: dict[str, Any], manifest_path: Path) -> list[str]:
+def verify_snapshot_against_graph(
+    snapshot: dict[str, Any], manifest_path: Path, graph_repo: Path | None = None,
+) -> list[str]:
     errors = validate_snapshot(snapshot, manifest_path)
     if errors:
         return errors
     try:
         reconstructed = reconstruct_index_at_commit(
-            snapshot["graph_source_root"], snapshot["graph_commit"], manifest_path.parent,
+            snapshot["graph_source_root"], snapshot["graph_commit"], graph_repo if graph_repo is not None else manifest_path.parent,
         )
         if reconstructed["index_digest"] != snapshot["graph_index_digest"]:
             errors.append("snapshot graph index digest does not match pinned commit")
@@ -966,7 +968,7 @@ def command(args: argparse.Namespace) -> int:
             raise KernelError("\n".join(errors))
     elif args.action == "freeze":
         index = load_json(Path(args.index))
-        verify_index_at_commit(index, args.graph_commit, Path(args.index).resolve().parent)
+        verify_index_at_commit(index, args.graph_commit, args.graph_repo if args.graph_repo is not None else Path(args.index).resolve().parent)
         checks = parse_required_checks(args.required_check, args.trusted_attestor)
         snapshot, bundle, payload = freeze_snapshot(args.feature, args.version, index, args.node, args.delivery_lane, args.repository, checks, args.graph_commit, args.supersedes)
         publish_snapshot(Path(args.output), snapshot, bundle, payload)
@@ -974,20 +976,20 @@ def command(args: argparse.Namespace) -> int:
         return PASS
     elif args.action == "verify-snapshot":
         path = Path(args.snapshot)
-        errors = verify_snapshot_against_graph(load_json(path), path)
+        errors = verify_snapshot_against_graph(load_json(path), path, args.graph_repo)
         if errors:
             raise KernelError("\n".join(errors))
     elif args.action == "drift":
         snapshot_path = Path(args.snapshot)
         snapshot = load_json(snapshot_path)
-        snapshot_errors = verify_snapshot_against_graph(snapshot, snapshot_path)
+        snapshot_errors = verify_snapshot_against_graph(snapshot, snapshot_path, args.graph_repo)
         if snapshot_errors:
             raise KernelError("\n".join(snapshot_errors))
         errors = detect_drift(snapshot, load_json(Path(args.index)))
     elif args.action == "record-result":
         snapshot_path = Path(args.snapshot)
         snapshot = load_json(snapshot_path)
-        snapshot_errors = verify_snapshot_against_graph(snapshot, snapshot_path)
+        snapshot_errors = verify_snapshot_against_graph(snapshot, snapshot_path, args.graph_repo)
         if snapshot_errors:
             raise KernelError("\n".join(snapshot_errors))
         repo_commit, repo_digest = repo_state(Path(args.repo_path))
@@ -1004,7 +1006,7 @@ def command(args: argparse.Namespace) -> int:
     elif args.action == "declare-attestation":
         snapshot_path = Path(args.snapshot)
         snapshot = load_json(snapshot_path)
-        snapshot_errors = verify_snapshot_against_graph(snapshot, snapshot_path)
+        snapshot_errors = verify_snapshot_against_graph(snapshot, snapshot_path, args.graph_repo)
         if snapshot_errors:
             raise KernelError("\n".join(snapshot_errors))
         def build(entries: list[dict[str, Any]]) -> dict[str, Any]:
@@ -1029,7 +1031,7 @@ def command(args: argparse.Namespace) -> int:
         path = Path(args.snapshot)
         snapshot = load_json(path)
         entries = load_ledger(Path(args.ledger))
-        structural_errors = verify_snapshot_against_graph(snapshot, path) + validate_ledger(snapshot, entries)
+        structural_errors = verify_snapshot_against_graph(snapshot, path, args.graph_repo) + validate_ledger(snapshot, entries)
         if structural_errors:
             raise KernelError("\n".join(dict.fromkeys(structural_errors)))
         errors = verify_evidence(snapshot, entries)
@@ -1086,6 +1088,8 @@ def parser() -> argparse.ArgumentParser:
     evidence = actions.add_parser("verify-evidence")
     evidence.add_argument("--ledger", required=True)
     evidence.add_argument("--snapshot", required=True)
+    for action in (freeze, verify, drift, record, attest, evidence):
+        action.add_argument("--graph-repo", type=Path, help="Git checkout containing the pinned Domain Graph commit")
     return root
 
 
