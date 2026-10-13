@@ -49,7 +49,7 @@ Skill 不複製 kernel implementation。
 - Agent 可建立 `candidate`/`disputed` node 與 decision packet；只有 identified human PM/domain authority 能接受 meaning。沒有 traceable acceptance、confirmed L3 authority node 或 scope coverage 時，不填 `confirmed` metadata。Hub 在 `hub.yaml` 的 `authority.registry` 宣告 authority nodes 存放位置。
 - 只有使用者要求建立/更新 Domain Graph 時才修改 `docs/domain/**` 與 generated index。Review/query 不授權寫入；ticket/chat/repository writes、commit/push/PR 各需另外的 active request。
 - 不修改任何 product repository 的 code。Implementation investigation 是 read-only evidence collection，且遵守該 repo guides、primary branch 與 code-explorer-first 規則。
-- 不建立或修改 Feature Snapshot、不執行 repository delivery loops、不記錄 delivery evidence。這些由 `$feature-delivery` 負責。
+- 不建立或修改 Feature Snapshot、不執行 repository delivery loops、不記錄 delivery evidence。這些由 `$delivery-workflow` 負責。
 - `compile`/`gate-index` 只驗證 machine coherence，不代表 authority acceptance、Domain Gate 或 Snapshot readiness。
 
 ## Shared seam
@@ -64,5 +64,5 @@ seam，不在 Skill 內複製 validator，也不手改 `domain-index/index.json`
 - 每次回傳：完成的 artifact/change、observed/inferred/confirmed 分類、未決 evidence 或 authority blocker、machine validation 結果與下一個合法路徑。若 read-only 或 decision-packet-only 路徑不需要執行 validation，明寫 `not run / not applicable` 與原因，不用假造 pass。
 - Canonical update 只有在 Markdown 與 regenerated index 一致、`compile` 和 `gate-index` 都 exit `0` 時才是 `graph commit ready`；這個 prose outcome 不是 kernel-emitted status。未獲 commit 授權時停在 readiness，不自行 commit。
 - 若更新含 `confirmed` node，還必須保留 traceable human confirmation metadata；machine pass 不能取代它。
-- 只有實際 commit 後才能向 `$feature-delivery` 提供 full graph commit SHA。Feature Delivery 仍須重新做 active-slice/closure gate，Domain Skill 不 freeze Snapshot。
+- 只有實際 commit 後才能向 `$delivery-workflow` 提供 full graph commit SHA。Feature Delivery 仍須重新做 active-slice/closure gate，Domain Skill 不 freeze Snapshot。
 - Feedback 永不重寫 frozen Snapshot；需要 rebaseline、v2 或 release classification 時交回 human delivery/release owner。

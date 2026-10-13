@@ -18,7 +18,7 @@
 先執行：
 
 ```bash
-python3 -B .domain-delivery/skills/feature-delivery/scripts/validate_feature_intent.py \
+python3 -B .domain-delivery/skills/delivery-workflow/scripts/validate_feature_intent.py \
   --input <01-feature-intent.json> --require-ready
 
 python3 -B .domain-delivery/kernel/scripts/kernel.py compile \

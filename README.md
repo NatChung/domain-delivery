@@ -46,7 +46,7 @@ See [`skills/delivery-hub/SKILL.md`](skills/delivery-hub/SKILL.md).
 skills/
   delivery-hub/       install, check and upgrade a Hub's pinned workflow
   domain-graph/       the continuous Domain lane
-  feature-delivery/   request -> Snapshot -> repository loops -> evidence
+  delivery-workflow/  request -> Snapshot -> repository loops -> evidence
 kernel/               deterministic graph, Snapshot and Evidence integrity
 template/             the Hub skeleton `init` writes
 migrations/           Hub migrations run by `upgrade`
@@ -79,7 +79,7 @@ unenforced` because it is performed by the host/agent.
 
 ```bash
 python3 -B -m unittest discover -s kernel/tests -v
-python3 -B -m unittest discover -s skills/feature-delivery/tests -v
+python3 -B -m unittest discover -s skills/delivery-workflow/tests -v
 python3 -B -m unittest discover -s tests -v
 ```
 
@@ -92,6 +92,8 @@ Skills, kernel, schemas, template and docs ship as one atomic SemVer release
 ([ADR 0004](docs/adr/0004-shared-workflow-separate-domain-graphs.md),
 [0008](docs/adr/0008-distribute-shared-workflow-as-pinned-submodule.md)).
 Consumers cannot mix component versions. See [`CHANGELOG.md`](CHANGELOG.md).
+Before adopting the planned Skill rename,
+follow [`migrations/delivery-workflow-rename.md`](migrations/delivery-workflow-rename.md).
 
 ## Licence
 

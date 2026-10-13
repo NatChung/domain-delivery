@@ -3,6 +3,16 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## Unreleased (planned 0.6.0)
+
+- Breaking: rename the Steps 01–08 Skill from `feature-delivery` to
+  `delivery-workflow`, including its directory, invocation name, current pointers
+  and `doctor --skill-source` lifecycle selection. No legacy directory or redirect
+  is shipped; consumers must migrate their adapters before updating the pin.
+- See [the manual rename migration](migrations/delivery-workflow-rename.md).
+  Kernel paths, artifact contracts and frozen Snapshot/evidence bytes are unchanged.
+- `VERSION` and plugin versions remain at 0.5.0 until release; no tag is created.
+
 ## 0.5.0
 
 - Add opt-in schema v2 UI Feature Snapshots: immutable accepted request/AC text,

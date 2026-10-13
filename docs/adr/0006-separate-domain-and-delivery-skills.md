@@ -2,6 +2,10 @@
 
 Status: Accepted (2026-09-02)
 
+Current-name note: the delivery Skill is now `delivery-workflow`; the original
+`feature-delivery` name below records this decision at acceptance. See the
+[rename migration](../../migrations/delivery-workflow-rename.md) for current paths.
+
 Kernel-location note: the decision to keep the implementation in a directory
 inside the first Hub until a second Hub existed is superseded by
 [ADR 0007](0007-move-kernel-into-repo-plugin.md) and then by

@@ -2,6 +2,10 @@
 
 Status: Accepted (2026-09-02)
 
+Current-name note: the delivery Skill is now `delivery-workflow`; the original
+`feature-delivery` name below records this decision at acceptance. See the
+[rename migration](../../migrations/delivery-workflow-rename.md) for current paths.
+
 Move the repository-neutral Graph, Snapshot and Evidence kernel out of an
 ad-hoc directory inside the first Hub and into a packaged plugin. The plugin
 owns one Python module interface, one stable CLI adapter, schemas, tests and

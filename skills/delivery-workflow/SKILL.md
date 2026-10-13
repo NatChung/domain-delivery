@@ -1,18 +1,18 @@
 ---
-name: feature-delivery
-description: 將 PO 的 tracker request 依序轉成 Feature Intent、Domain Graph active slice、immutable Snapshot、executable check projection、repository packets、implementation loops 與 bound evidence。當使用者提供 ticket key/內容並要求理解需求、啟動 feature delivery，要求純 UI fast lane Snapshot，或要求從 Feature Delivery 的 numbered artifact/step 接續時使用；每個 gate 未通過即停止下游 delivery，不因啟動流程而自動取得外部寫入或 product-code mutation 權限。
+name: delivery-workflow
+description: 將 PO 的 tracker request 依序轉成 Feature Intent、Domain Graph active slice、immutable Snapshot、executable check projection、repository packets、implementation loops 與 bound evidence。當使用者提供 ticket key/內容並要求理解需求、啟動 delivery workflow，要求純 UI fast lane Snapshot，或要求從 Delivery Workflow 的 numbered artifact/step 接續時使用；每個 gate 未通過即停止下游 delivery，不因啟動流程而自動取得外部寫入或 product-code mutation 權限。
 ---
 
-# Feature Delivery
+# Delivery Workflow
 
-這是 Delivery Hub 的 Feature Delivery router。
+這是 Delivery Hub 的 Delivery Workflow router。
 [00 · artifact matrix](references/00-delivery-artifact-matrix.md) 擁有跨步 artifact
 名稱、producer/consumer、authority、enforcement owner 與 failure routing；每個
 numbered reference 擁有該步的 procedure、status computation、machine command 與
 completion criterion。進入 Steps 02–08 前完整閱讀 matrix，再只讀當下 step reference。
 
 在 Hub 中選用本 Skill 時，先依 Hub 的 `docs/skill-entry.md` 確認 pinned procedure 與來源；
-若該入口尚不存在，直接讀取當前 Hub 的 `.domain-delivery/skills/feature-delivery/SKILL.md`，
+若該入口尚不存在，直接讀取當前 Hub 的 `.domain-delivery/skills/delivery-workflow/SKILL.md`，
 並依該 installed release 的規則執行。來源選擇為 `prose-only, unenforced`，由 host／agent 負責。
 
 若 Hub 的 `hub.yaml` 宣告 external `graph`，或本輪要搬移 Graph／驗證搬移前 Snapshot，
