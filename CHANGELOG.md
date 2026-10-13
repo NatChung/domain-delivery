@@ -3,14 +3,14 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
-## Unreleased — proposed 0.5.0
+## 0.5.0
 
 - Add opt-in schema v2 UI Feature Snapshots: immutable accepted request/AC text,
   human acceptance provenance and explicit scope exclusions, without Graph nodes.
 - Preserve schema v1 domain freeze and verification; missing kind means domain.
 - Add UI AC coverage through check-projection/v0.2; domain stays on v0.1.
 - See ADR 0010 (Proposed) and `migrations/ui-snapshot-kind.md` before upgrading
-  adapters. No frozen artifacts are rewritten; package VERSION/tag unchanged.
+  adapters. No frozen artifacts are rewritten.
 
 ## 0.4.0
 
