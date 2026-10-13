@@ -7,7 +7,7 @@
 Python validators 是 executable shape 與 gate authority：
 
 - `validate_feature_intent.py`：`feature-intent/v0.1`；
-- `validate_delivery_plan.py`：`check-projection/v0.1` 與 `repository-task-plan/v0.1`。
+- `validate_delivery_plan.py`：domain `check-projection/v0.1`、UI `check-projection/v0.2` 與 `repository-task-plan/v0.1`。
 
 `feature-intent.schema.json` 與 `05-06-delivery-plan.schema.json` 是 machine-readable mirrors。修改任何 field set、enum、ID pattern 或 schema version 時，同一次 change 必須更新 validator、schema 與 parity tests。Numbered references 中的 YAML/JSON 是 authoring examples，不是第四份 contract authority。
 

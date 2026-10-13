@@ -1,6 +1,6 @@
 ---
 name: feature-delivery
-description: 將 PO 的 tracker request 依序轉成 Feature Intent、Domain Graph active slice、immutable Snapshot、executable check projection、repository packets、implementation loops 與 bound evidence。當使用者提供 ticket key/內容並要求理解需求、啟動 feature delivery，或要求從 Feature Delivery 的 numbered artifact/step 接續時使用；每個 gate 未通過即停止下游 delivery，不因啟動流程而自動取得外部寫入或 product-code mutation 權限。
+description: 將 PO 的 tracker request 依序轉成 Feature Intent、Domain Graph active slice、immutable Snapshot、executable check projection、repository packets、implementation loops 與 bound evidence。當使用者提供 ticket key/內容並要求理解需求、啟動 feature delivery，要求純 UI fast lane Snapshot，或要求從 Feature Delivery 的 numbered artifact/step 接續時使用；每個 gate 未通過即停止下游 delivery，不因啟動流程而自動取得外部寫入或 product-code mutation 權限。
 ---
 
 # Feature Delivery
@@ -29,8 +29,9 @@ completion criterion。進入 Steps 02–08 前完整閱讀 matrix，再只讀�
 
 - 使用者提供 ticket key/URL/content 且沒有 valid prior artifact：從 Step 01 開始。
 - 使用者提供 numbered artifact 或明確指定 step：先驗證其 actual producer 的 gate；prose-only step 依該 reference 的 completion criteria，optional Step 03 依 report 指定回 Step 02，不以數字猜 predecessor。
-- 使用者要求完整 delivery：依 01 → 02 → optional 03 → 02 → 04 → 05 → 06 → 07 → 08；第一個 non-ready/unauthorized state 停止下游 delivery；當步補正與接續依 [matrix Gate rule](references/00-delivery-artifact-matrix.md#gate-rule)。
-- Skill-owned reference、feature planning artifact、spec、packet 與 raw output 使用 producer step prefix。Kernel-owned `DOMAIN.md`、`domain-payload.json`、`snapshot-manifest.json`、`check-ledger.jsonl` 與既有 schema/script 名稱保留 machine contract，不強加 prefix。
+- 純 UI／文案／樣式／明確 bug fast lane：讀 Step 04 的 UI kind 進入條件；具名人類接受全部原文、AC 與分類後走 04 → 05 → 06 → 07 → 08。含 excluded scope 或不確定範圍則走 domain。
+- 使用者要求完整 domain delivery：依 01 → 02 → optional 03 → 02 → 04 → 05 → 06 → 07 → 08；第一個 non-ready/unauthorized state 停止下游 delivery；當步補正與接續依 [matrix Gate rule](references/00-delivery-artifact-matrix.md#gate-rule)。
+- Skill-owned reference、feature planning artifact、spec、packet 與 raw output 使用 producer step prefix。Kernel-owned `DOMAIN.md`、`domain-payload.json`、`UI.md`、`ui-payload.json`、`snapshot-manifest.json`、`check-ledger.jsonl` 與既有 schema/script 名稱保留 machine contract，不強加 prefix。
 
 ## Step routing
 
@@ -39,7 +40,7 @@ completion criterion。進入 Steps 02–08 前完整閱讀 matrix，再只讀�
 | 01 | 新 request：[01 · 理解需求 Ticket](references/01-understand-request.md) |
 | 02 | 有 ready Feature Intent：[02 · 對照 Domain Graph](references/02-compare-domain-graph.md) |
 | 03 | Step 02 指定 implementation investigation，包含 technical evidence 可能改變 domain decision packet 的 mixed case：[03 · Codegraph investigation](references/03-investigate-with-codegraph.md)；完成後回 Step 02 |
-| 04 | Step 02 指定 snapshot：[04 · 凍結 Feature Snapshot](references/04-freeze-feature-snapshot.md) |
+| 04 | Step 02 指定 domain snapshot，或 UI fast lane 具名接受：[04 · 凍結 Feature Snapshot](references/04-freeze-feature-snapshot.md) |
 | 05 | 有 verified Snapshot：[05 · 投影 executable checks](references/05-project-executable-checks.md) |
 | 06 | 有 ready projection：[06 · 建立 repository packets](references/06-create-repository-task-packets.md) |
 | 07 | 有 ready task plan 且 active request 已授權 product mutations：[07 · Repository Agent Loops](references/07-run-repository-agent-loops.md) |
@@ -53,7 +54,7 @@ Step 02 若發現需要新增/修改 canonical node、補 broad journey/capabili
 
 - Ticket/PO statements 是 request evidence；只有 identified PM/domain authority 能 confirm domain meaning。
 - Code explorer 與 code 是 implementation evidence；impact 只在單一 repo，cross-repo wire edges 要分別查證。
-- Snapshot 只接受 committed `confirmed L3` closure。Agent 不自行填 human confirmation，也不以 synthetic fixture 代表真實 Hub readiness。
+- Domain Snapshot 接受 committed `confirmed L3` closure；UI Snapshot 依 Step 04 的具名 human request acceptance 與 scope exclusions。Agent 不自行填 human confirmation/acceptance，也不以 synthetic fixture 代表真實 Hub readiness。
 - Tracker/chat/repository external writes、product repo edits、commit/push/PR/release 各自需要 active request 授權；啟動本 Skill 不自動授權。
 - 每個尚無 machine enforcement 的規則明標 `prose-only, unenforced` 與原因。
 

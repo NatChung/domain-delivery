@@ -405,22 +405,34 @@ def render_domain_bundle(feature: str, version: str, graph_commit: str, nodes: l
 def freeze_snapshot(
     feature: str,
     version: str,
-    index: dict[str, Any],
+    index: dict[str, Any] | None,
     root_ids: Iterable[str],
     delivery_lanes: Iterable[str],
     repositories: Iterable[str],
     required_checks: list[dict[str, Any]],
-    graph_commit: str,
+    graph_commit: str | None,
     supersedes: str | None = None,
-) -> tuple[dict[str, Any], str, list[dict[str, Any]]]:
-    errors = validate_index(index)
+    *,
+    kind: str = "domain",
+    accepted_request: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], str, Any]:
+    if not isinstance(kind, str) or kind not in {"domain", "ui"}:
+        raise KernelError("snapshot kind must be domain or ui")
+    if kind == "ui":
+        if index is not None or graph_commit is not None or list(root_ids):
+            raise KernelError("ui snapshot must not carry a Graph pin or domain roots")
+        errors = validate_accepted_request(accepted_request)
+    else:
+        if accepted_request is not None:
+            raise KernelError("domain snapshot must not carry accepted_request")
+        errors = validate_index(index)
     if errors:
         raise KernelError("\n".join(errors))
     if not isinstance(feature, str) or not NAME_RE.fullmatch(feature):
         raise KernelError("feature must be a lowercase identifier")
     if not isinstance(version, str) or not NAME_RE.fullmatch(version):
         raise KernelError("snapshot version must be a lowercase identifier")
-    if not isinstance(graph_commit, str) or not COMMIT_RE.fullmatch(graph_commit):
+    if kind == "domain" and (not isinstance(graph_commit, str) or not COMMIT_RE.fullmatch(graph_commit)):
         raise KernelError("graph_commit must be a 7-64 character lowercase hex commit")
     lane_values = list(delivery_lanes)
     repo_values = list(repositories)
@@ -459,6 +471,26 @@ def freeze_snapshot(
     uncovered = sorted(set(repos) - check_repos)
     if uncovered:
         raise KernelError(f"repositories without required checks: {', '.join(uncovered)}")
+    if kind == "ui":
+        # Round-trip detaches frozen content from caller-owned mutable input.
+        payload = strict_json_loads(canonical(accepted_request).decode(), "accepted request")
+        bundle = render_ui_bundle(feature, version, payload)
+        snapshot = {
+            "schema_version": 2, "kind": "ui", "feature": feature,
+            "snapshot_version": version, "state": "frozen",
+            "root_nodes": [], "nodes": [], "accepted_request": payload,
+            "delivery_lanes": lanes, "repositories": repos,
+            "required_checks": normalized_checks,
+            "ui_bundle": {"path": "UI.md", "digest": digest_bytes(bundle.encode()),
+                          "payload_path": "ui-payload.json", "payload_digest": digest_json(payload)},
+        }
+        if supersedes is not None:
+            snapshot["supersedes"] = supersedes
+        snapshot["snapshot_digest"] = digest_json(snapshot)
+        errors = validate_snapshot(snapshot)
+        if errors:
+            raise KernelError("\n".join(errors))
+        return snapshot, bundle, payload
     selected = closure(index, root_ids)
     bundle = render_domain_bundle(feature, version, graph_commit, selected)
     payload_digest = digest_json(selected)
@@ -493,14 +525,164 @@ def freeze_snapshot(
     return snapshot, bundle, selected
 
 
+UI_SCOPE_FIELDS = {"business_rules", "cross_system", "data_changes", "permission_changes"}
+
+
+def validate_accepted_request(value: Any) -> list[str]:
+    if not isinstance(value, dict) or set(value) != {
+        "request", "request_digest", "acceptance_criteria", "accepted_by",
+        "accepted_at", "source", "scope",
+    }:
+        return ["accepted_request has missing or unknown fields"]
+    errors: list[str] = []
+    request = value.get("request")
+    if not isinstance(request, str) or not request.strip():
+        errors.append("accepted request must contain verbatim non-empty text")
+    elif value.get("request_digest") != digest_bytes(request.encode("utf-8")):
+        errors.append("accepted request digest mismatch")
+    if not isinstance(value.get("accepted_by"), str) or not re.fullmatch(r"human:[A-Za-z0-9][A-Za-z0-9._-]*", value["accepted_by"]):
+        errors.append("accepted_by must name a human: identity, never an agent or role")
+    if not iso_datetime(value.get("accepted_at")):
+        errors.append("accepted_at must be a timezone-aware ISO datetime")
+    if not isinstance(value.get("source"), str) or not value["source"].strip():
+        errors.append("acceptance source must be non-empty")
+    scope = value.get("scope")
+    if not isinstance(scope, dict) or set(scope) != UI_SCOPE_FIELDS | {"category", "rationale"}:
+        errors.append("ui scope has missing or unknown fields")
+    else:
+        if scope.get("category") not in ("ui", "copy", "style", "explicit_bug"):
+            errors.append("ui scope category is invalid")
+        if not isinstance(scope.get("rationale"), str) or not scope["rationale"].strip():
+            errors.append("ui scope requires a classification rationale")
+        if any(scope.get(field) is not False for field in UI_SCOPE_FIELDS):
+            errors.append("business rules, cross-system, data or permission changes require domain kind")
+    criteria = value.get("acceptance_criteria")
+    if not isinstance(criteria, list) or not criteria:
+        return errors + ["accepted request requires non-empty acceptance_criteria"]
+    seen: set[str] = set()
+    for ac in criteria:
+        if not isinstance(ac, dict) or set(ac) != {"id", "text", "digest"}:
+            errors.append("acceptance criterion shape is invalid")
+            continue
+        ac_id = ac.get("id")
+        if not isinstance(ac_id, str) or not re.fullmatch(r"ac:[a-z0-9][a-z0-9._-]*", ac_id):
+            errors.append("acceptance criterion ID is invalid")
+        elif ac_id in seen:
+            errors.append("duplicate acceptance criterion ID")
+        else:
+            seen.add(ac_id)
+        text = ac.get("text")
+        if not isinstance(text, str) or not text.strip():
+            errors.append("acceptance criterion text must be verbatim and non-empty")
+        elif ac.get("digest") != digest_bytes(text.encode("utf-8")):
+            errors.append("acceptance criterion digest mismatch")
+    return errors
+
+
+def render_ui_bundle(feature: str, version: str, payload: dict[str, Any]) -> str:
+    return (f"# {feature} UI Feature Snapshot {version}\n\n"
+            "Frozen accepted request, criteria, provenance and classification:\n\n```json\n"
+            + json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n```\n")
+
+
+def validate_snapshot_routing(snapshot: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    repos = snapshot.get("repositories")
+    checks = snapshot.get("required_checks")
+    if not valid_unique_strings(repos, NAME_RE):
+        errors.append("snapshot has no repositories")
+        repos = []
+    lanes = snapshot.get("delivery_lanes")
+    if not valid_unique_strings(lanes, NAME_RE):
+        errors.append("snapshot delivery lanes are invalid")
+    if not isinstance(checks, list) or not checks:
+        errors.append("snapshot has no required checks")
+        checks = []
+    seen: set[tuple[str, str]] = set()
+    checked_repos: set[str] = set()
+    for check in checks:
+        if not isinstance(check, dict) or set(check) != {"repository_id", "check_id", "trusted_attestors"}:
+            errors.append("required check shape is invalid")
+            continue
+        repository_id = check.get("repository_id")
+        check_id = check.get("check_id")
+        if not isinstance(repository_id, str) or not isinstance(check_id, str):
+            errors.append("required check repository/check ID must be strings")
+            continue
+        key = (repository_id, check_id)
+        if key in seen:
+            errors.append(f"duplicate required check: {key[0]}/{key[1]}")
+        seen.add(key)
+        if repository_id not in repos or not NAME_RE.fullmatch(repository_id) or not NAME_RE.fullmatch(check_id):
+            errors.append(f"invalid required check: {key[0]}/{key[1]}")
+        else:
+            checked_repos.add(repository_id)
+        attestors = check.get("trusted_attestors")
+        if not valid_unique_strings(attestors, IDENTITY_RE):
+            errors.append(f"required check has no trusted attestor: {key[0]}/{key[1]}")
+    for repository_id in sorted(set(repos) - checked_repos):
+        errors.append(f"repository has no required check: {repository_id}")
+
+    return errors
+
+
+def validate_ui_snapshot(snapshot: dict[str, Any], manifest_path: Path | None) -> list[str]:
+    required = {"schema_version", "kind", "feature", "snapshot_version", "state",
+                "root_nodes", "nodes", "accepted_request", "delivery_lanes",
+                "repositories", "required_checks", "ui_bundle", "snapshot_digest"}
+    errors: list[str] = []
+    if required - set(snapshot) or set(snapshot) - required - {"supersedes"}:
+        errors.append("ui snapshot has missing or unknown fields")
+    if snapshot.get("schema_version") != 2 or snapshot.get("kind") != "ui" or snapshot.get("state") != "frozen":
+        errors.append("ui snapshot schema/kind/state is invalid")
+    for field in ("feature", "snapshot_version"):
+        if not isinstance(snapshot.get(field), str) or not NAME_RE.fullmatch(snapshot[field]):
+            errors.append(f"ui snapshot {field} is invalid")
+    if snapshot.get("nodes") != [] or snapshot.get("root_nodes") != []:
+        errors.append("ui snapshot must have empty domain nodes and roots")
+    errors.extend(validate_accepted_request(snapshot.get("accepted_request")))
+    errors.extend(validate_snapshot_routing(snapshot))
+    bundle = snapshot.get("ui_bundle")
+    if (not isinstance(bundle, dict) or set(bundle) != {"path", "digest", "payload_path", "payload_digest"}
+            or bundle.get("path") != "UI.md" or bundle.get("payload_path") != "ui-payload.json"
+            or not DIGEST_RE.fullmatch(str(bundle.get("digest", "")))
+            or not DIGEST_RE.fullmatch(str(bundle.get("payload_digest", "")))):
+        errors.append("ui bundle declaration is invalid")
+    else:
+        payload = snapshot.get("accepted_request")
+        if bundle["payload_digest"] != digest_json(payload):
+            errors.append("ui payload declaration digest mismatch")
+        if isinstance(payload, dict):
+            rendered = render_ui_bundle(str(snapshot.get("feature", "")), str(snapshot.get("snapshot_version", "")), payload).encode()
+            if bundle["digest"] != digest_bytes(rendered):
+                errors.append("ui bundle declaration digest mismatch")
+            if manifest_path:
+                try:
+                    if load_json(manifest_path.parent / bundle["payload_path"]) != payload:
+                        errors.append("ui payload does not match accepted request")
+                    if (manifest_path.parent / bundle["path"]).read_bytes() != rendered:
+                        errors.append("ui bundle is not the rendering of its payload")
+                except (OSError, KernelError) as exc:
+                    errors.append(f"cannot read ui bundle: {exc}")
+    if snapshot.get("snapshot_digest") != digest_json({key: value for key, value in snapshot.items() if key != "snapshot_digest"}):
+        errors.append("snapshot digest does not match content")
+    if "supersedes" in snapshot and not DIGEST_RE.fullmatch(str(snapshot["supersedes"])):
+        errors.append("supersedes digest is invalid")
+    return errors
+
+
 def validate_snapshot(snapshot: Any, manifest_path: Path | None = None) -> list[str]:
     if not isinstance(snapshot, dict):
         return ["snapshot must be an object"]
+    if snapshot.get("kind") == "ui":
+        return validate_ui_snapshot(snapshot, manifest_path)
     required = {"schema_version", "feature", "snapshot_version", "state", "graph_commit", "graph_source_root", "graph_index_digest", "root_nodes", "nodes", "delivery_lanes", "repositories", "required_checks", "domain_bundle", "snapshot_digest"}
-    allowed = required | {"supersedes"}
+    allowed = required | {"supersedes", "kind"}
     errors: list[str] = []
     if set(snapshot) - allowed or required - set(snapshot):
         errors.append("snapshot has missing or unknown fields")
+    if snapshot.get("kind", "domain") != "domain":
+        errors.append("snapshot kind is invalid")
     if snapshot.get("schema_version") != 1 or snapshot.get("state") != "frozen":
         errors.append("snapshot schema/state is invalid")
     if not isinstance(snapshot.get("feature"), str) or not NAME_RE.fullmatch(snapshot.get("feature", "")):
@@ -550,41 +732,7 @@ def validate_snapshot(snapshot: Any, manifest_path: Path | None = None) -> list[
     if roots and not any(pinned_by_id.get(root, {}).get("type") in {"capability", "journey"} for root in roots):
         errors.append("snapshot requires a capability or journey root")
 
-    repos = snapshot.get("repositories")
-    checks = snapshot.get("required_checks")
-    if not valid_unique_strings(repos, NAME_RE):
-        errors.append("snapshot has no repositories")
-        repos = []
-    lanes = snapshot.get("delivery_lanes")
-    if not valid_unique_strings(lanes, NAME_RE):
-        errors.append("snapshot delivery lanes are invalid")
-    if not isinstance(checks, list) or not checks:
-        errors.append("snapshot has no required checks")
-        checks = []
-    seen: set[tuple[str, str]] = set()
-    checked_repos: set[str] = set()
-    for check in checks:
-        if not isinstance(check, dict) or set(check) != {"repository_id", "check_id", "trusted_attestors"}:
-            errors.append("required check shape is invalid")
-            continue
-        repository_id = check.get("repository_id")
-        check_id = check.get("check_id")
-        if not isinstance(repository_id, str) or not isinstance(check_id, str):
-            errors.append("required check repository/check ID must be strings")
-            continue
-        key = (repository_id, check_id)
-        if key in seen:
-            errors.append(f"duplicate required check: {key[0]}/{key[1]}")
-        seen.add(key)
-        if repository_id not in repos or not NAME_RE.fullmatch(repository_id) or not NAME_RE.fullmatch(check_id):
-            errors.append(f"invalid required check: {key[0]}/{key[1]}")
-        else:
-            checked_repos.add(repository_id)
-        attestors = check.get("trusted_attestors")
-        if not valid_unique_strings(attestors, IDENTITY_RE):
-            errors.append(f"required check has no trusted attestor: {key[0]}/{key[1]}")
-    for repository_id in sorted(set(repos) - checked_repos):
-        errors.append(f"repository has no required check: {repository_id}")
+    errors.extend(validate_snapshot_routing(snapshot))
 
     bundle = snapshot.get("domain_bundle")
     if (
@@ -719,7 +867,7 @@ def verify_snapshot_against_graph(
     snapshot: dict[str, Any], manifest_path: Path, graph_repo: Path | None = None,
 ) -> list[str]:
     errors = validate_snapshot(snapshot, manifest_path)
-    if errors:
+    if errors or snapshot.get("kind") == "ui":
         return errors
     try:
         reconstructed = reconstruct_index_at_commit(
@@ -736,13 +884,14 @@ def verify_snapshot_against_graph(
     return errors
 
 
-def publish_snapshot(output: Path, snapshot: dict[str, Any], bundle: str, payload: list[dict[str, Any]]) -> None:
+def publish_snapshot(output: Path, snapshot: dict[str, Any], bundle: str, payload: Any) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     temp = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=output.parent))
     reserved = False
     try:
-        domain_path = temp / "DOMAIN.md"
-        payload_path = temp / "domain-payload.json"
+        declaration = snapshot["ui_bundle"] if snapshot.get("kind") == "ui" else snapshot["domain_bundle"]
+        domain_path = temp / declaration["path"]
+        payload_path = temp / declaration["payload_path"]
         manifest_path = temp / "snapshot-manifest.json"
         domain_path.write_text(bundle, encoding="utf-8")
         payload_path.write_bytes(canonical(payload))
@@ -772,6 +921,8 @@ def publish_snapshot(output: Path, snapshot: dict[str, Any], bundle: str, payloa
 
 
 def detect_drift(snapshot: dict[str, Any], index: dict[str, Any]) -> list[str]:
+    if snapshot.get("kind") == "ui":
+        raise KernelError("Graph drift is not applicable to ui snapshots; compare accepted requests separately")
     errors = validate_snapshot(snapshot) + validate_index(index)
     if errors:
         raise KernelError("\n".join(errors))
@@ -967,10 +1118,17 @@ def command(args: argparse.Namespace) -> int:
         if errors:
             raise KernelError("\n".join(errors))
     elif args.action == "freeze":
-        index = load_json(Path(args.index))
-        verify_index_at_commit(index, args.graph_commit, args.graph_repo if args.graph_repo is not None else Path(args.index).resolve().parent)
+        if args.kind == "domain":
+            if not args.index or not args.graph_commit or args.accepted_request:
+                raise KernelError("domain freeze requires index/graph-commit and no accepted-request")
+            index = load_json(Path(args.index))
+            verify_index_at_commit(index, args.graph_commit, args.graph_repo if args.graph_repo is not None else Path(args.index).resolve().parent)
+        else:
+            if args.index or args.graph_commit or args.node or args.graph_repo or not args.accepted_request:
+                raise KernelError("ui freeze requires accepted-request and no Graph inputs")
+            index = None
         checks = parse_required_checks(args.required_check, args.trusted_attestor)
-        snapshot, bundle, payload = freeze_snapshot(args.feature, args.version, index, args.node, args.delivery_lane, args.repository, checks, args.graph_commit, args.supersedes)
+        snapshot, bundle, payload = freeze_snapshot(args.feature, args.version, index, args.node, args.delivery_lane, args.repository, checks, args.graph_commit, args.supersedes, kind=args.kind, accepted_request=load_json(Path(args.accepted_request)) if args.accepted_request else None)
         publish_snapshot(Path(args.output), snapshot, bundle, payload)
         print(snapshot["snapshot_digest"])
         return PASS
@@ -1054,13 +1212,15 @@ def parser() -> argparse.ArgumentParser:
     freeze = actions.add_parser("freeze")
     freeze.add_argument("--feature", required=True)
     freeze.add_argument("--version", required=True)
-    freeze.add_argument("--index", required=True)
+    freeze.add_argument("--index")
+    freeze.add_argument("--kind", choices=("domain", "ui"), default="domain")
+    freeze.add_argument("--accepted-request")
     freeze.add_argument("--node", action="append", default=[])
     freeze.add_argument("--delivery-lane", action="append", default=[])
     freeze.add_argument("--repository", action="append", default=[])
     freeze.add_argument("--required-check", action="append", default=[])
     freeze.add_argument("--trusted-attestor", action="append", default=[])
-    freeze.add_argument("--graph-commit", required=True)
+    freeze.add_argument("--graph-commit")
     freeze.add_argument("--supersedes")
     freeze.add_argument("--output", required=True)
     verify = actions.add_parser("verify-snapshot")

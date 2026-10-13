@@ -11,7 +11,7 @@ Step 05 materialize Step 04 已凍結的 check obligations；它不能新增 bus
 ## 輸入
 
 - `specs/<feature>/snapshot/<version>/snapshot-manifest.json`；
-- 同目錄的 `DOMAIN.md` 與 `domain-payload.json`；
+- 同目錄 kind-specific bundle：domain 用 `DOMAIN.md`／`domain-payload.json`，UI 用 `UI.md`／`ui-payload.json`；
 - `.domain-delivery/kernel/scripts/kernel.py verify-snapshot` exit `0`；
 - manifest 中的 `snapshot_digest`、repositories、required checks、trusted attestors。
 
@@ -26,7 +26,7 @@ python3 -B .domain-delivery/kernel/scripts/kernel.py verify-snapshot \
 
 ## 1. 建立 contract stack
 
-依固定順序檢查 frozen nodes：
+Domain kind 依固定順序檢查 frozen nodes；UI kind 依本頁「UI Snapshot 的 AC coverage」逐條投影 AC，再套用相關 native quality layers：
 
 1. BDD examples：actors 可觀察的 Given/When/Then；
 2. Design-by-Contract：preconditions、postconditions、invariants、invalid cases；
@@ -34,7 +34,7 @@ python3 -B .domain-delivery/kernel/scripts/kernel.py verify-snapshot \
 4. architecture contracts：dependency direction、ownership、brownfield ratchet；
 5. repository-native quality checks。
 
-每個 specification statement 必須指向 `domain-payload.json` 中的 exact node ID、field 與 statement，或指向 product repo 的明確 rule file。Repository rule 只能決定 implementation quality，不能加入 snapshot 沒有的 business meaning。整份 projection 的 `snapshot_rule_refs` union 必須覆蓋 selected executable nodes 的全部 `scope`、`out_of_scope`、`preconditions`、`postconditions`、`invariants`、`invalid_cases` statements；同一 rule 可被多 repo/check 重複引用。
+Domain kind 的每個 specification statement 必須指向 `domain-payload.json` 中的 exact node ID、field 與 statement，或指向 product repo 的明確 rule file。Repository rule 只能決定 implementation quality，不能加入 snapshot 沒有的 business meaning。整份 projection 的 `snapshot_rule_refs` union 必須覆蓋 selected executable nodes 的全部 `scope`、`out_of_scope`、`preconditions`、`postconditions`、`invariants`、`invalid_cases` statements；同一 rule 可被多 repo/check 重複引用。
 
 BDD 是 Snapshot projection，不用來反向決定 Snapshot。若合理 scenario 需要 snapshot 未包含的 rule，停止並由人類分類是否建立 v2。
 
@@ -119,9 +119,9 @@ BDD 是 Snapshot projection，不用來反向決定 Snapshot。若合理 scenari
 }
 ```
 
-Allowed `layers`：`bdd`、`design_by_contract`、`wire_contract`、`architecture_contract`、`native_quality`。`snapshot_rule_refs.field` 只能是 `scope`、`out_of_scope`、`preconditions`、`postconditions`、`invariants`、`invalid_cases`。
+Allowed `layers`：`bdd`、`design_by_contract`、`wire_contract`、`architecture_contract`、`native_quality`。Domain `snapshot_rule_refs.field` 只能是 `scope`、`out_of_scope`、`preconditions`、`postconditions`、`invariants`、`invalid_cases`；UI 只能是 `acceptance_criteria`。
 
-每個 manifest `(repository_id, check_id)` 必須在 `projections` 恰好出現一次；同一 `check_id` 出現在不同 repositories 時仍是不同 obligation。每個 projection 至少有一個 snapshot 或 repository rule ref、至少一個 numbered specification path，以及一個 planned checker path；所有 projections 合計必須覆蓋全部 frozen executable rules。
+每個 manifest `(repository_id, check_id)` 必須在 `projections` 恰好出現一次；同一 `check_id` 出現在不同 repositories 時仍是不同 obligation。每個 projection 至少有一個 snapshot 或 repository rule ref、至少一個 numbered specification path，以及一個 planned checker path；所有 projections 合計必須覆蓋全部 domain frozen executable rules，或 UI 全部 AC。
 
 ## Projection gate
 
@@ -148,8 +148,20 @@ Validator 檢查 numbered path declarations，但不判斷 BDD/contract 文字�
 - `verify-snapshot` exit `0`；
 - `05-check-projection.json` 通過 `--require-ready`；
 - 每個 frozen required check 的 layer、source basis、numbered specs 與 planned checker path 已定義；
-- fresh review 沒有發現新增 business rule 或缺失 snapshot rule。
+- fresh review 沒有發現新增 business rule 或缺失 snapshot rule／UI AC。
 
 ## 邊界
 
 本步不開始 product-repo red/green loop、不聲稱 checker 已通過，也不記 evidence。實際 checker/test files 由 Step 07 依 repo-native seams 實作；Step 05 的 planned path 必須在 Step 06 packet 中一致。Step 08 kernel 尚不讀 planning artifacts，operator 對 checker path 的最後比對是 `prose-only, unenforced`。
+
+## UI Snapshot 的 AC coverage
+
+`kind: ui` 使用 `check-projection/v0.2`；domain（包括 missing kind）維持 v0.1。
+從 verified `ui-payload.json` 讀全部 `acceptance_criteria`。每條 projection 的
+`snapshot_rule_refs` 使用 `{node_id: <ac:id>, field: "acceptance_criteria", statement: <AC 原文>}`。
+`ac:` 是 frozen AC identifier，不是 Graph node。保留 exact text，不自行摘要或改寫。
+全部 AC 與全部 required repository/check pairs 都須被覆蓋；空 nodes 不代表 coverage
+為空，repository native quality refs 不能取代 AC。Validator 機械 enforce ID/text/field
+resolution、完整 AC coverage 及同一 snapshot digest。語意測試品質仍需 review。
+Step 06 packets 與 Step 08 evidence binding 不變。若發現 AC 包含業務規則、跨系統、
+資料或權限變更，停止並回 domain kind rebaseline，不能用 UI projection 添加規則。

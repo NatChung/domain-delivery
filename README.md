@@ -5,9 +5,10 @@ as one plugin that runs on Codex or Claude Code.
 
 - The **Domain lane** keeps a Markdown-first Domain Graph that never stops
   learning. Only an identified human authority can confirm meaning.
-- The **Delivery lane** takes only the confirmed slice a feature needs, freezes
-  it into an immutable Snapshot, projects executable checks, runs per-repository
-  loops, and binds hash-chained evidence back to that Snapshot.
+- The **Delivery lane** freezes the confirmed domain slice a feature needs, or
+  an accepted presentation-only request under the proposed UI kind, into an
+  immutable Snapshot; it projects executable checks, runs per-repository loops,
+  and binds hash-chained evidence back to that Snapshot.
 
 The lanes meet at exactly one place: the frozen Snapshot. Later graph edits show
 up as drift, not as silent changes to work already in flight.

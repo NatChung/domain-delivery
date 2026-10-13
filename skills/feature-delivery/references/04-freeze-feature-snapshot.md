@@ -1,4 +1,4 @@
-# 04 · 通過 Domain Gate，凍結 Feature Snapshot
+# 04 · 凍結 domain 或 UI Feature Snapshot
 
 狀態：v0.1，可執行。`.domain-delivery/kernel/scripts/kernel.py freeze` 與 `verify-snapshot` 機械式 enforce committed graph reconstruction、confirmed L3 closure、authority、digests、repository-scoped required checks 與 immutable publication。Step 02 report 的比較品質與人類 confirmation 仍是 `prose-only, unenforced`；kernel 只相信 canonical Domain Graph 的已確認內容。
 
@@ -6,7 +6,7 @@
 
 把 active feature 所需的 confirmed Domain Graph closure 凍結為 immutable execution basis。Snapshot 後的 BDD、contracts、repository packets、implementation 與 evidence 都必須綁同一個 `snapshot_digest`。
 
-## 進入條件
+## Domain kind 進入條件
 
 - `02-domain-comparison.md` 狀態為 `ready_for_snapshot`；
 - selected roots 至少包含一個 capability 或 journey；
@@ -93,7 +93,7 @@ python3 -B .domain-delivery/kernel/scripts/kernel.py verify-snapshot \
   --snapshot specs/<feature>/snapshot/<version>/snapshot-manifest.json
 ```
 
-只有 exit `0` 才通過 Domain Gate。Verification 會檢查：
+Domain kind 只有 exit `0` 才通過 Domain Gate。UI verification 不代表 Domain Gate。Verification 會檢查：
 
 - manifest/bundle/payload digests；
 - exact committed root dependency closure；
@@ -123,9 +123,9 @@ python3 -B .domain-delivery/kernel/scripts/kernel.py drift \
 - 新 capability：新 feature/change request；
 - code 違反有效 snapshot：bug fix。
 
-## 完成判準
+## Domain kind 完成判準
 
-Step 04 只有在以下條件全部成立才完成：
+Step 04 domain kind 只有在以下條件全部成立才完成：
 
 - version directory 是新建立且未修改；
 - `verify-snapshot` exit `0`；
@@ -134,7 +134,7 @@ Step 04 只有在以下條件全部成立才完成：
 
 最後一項一致性在 v0.1 是 `prose-only, unenforced`，因為 manifest 尚未 pin Step 02 digest。
 
-## 失敗與停止條件
+## Domain kind 失敗與停止條件
 
 - `freeze` 因 candidate/L2/unknown authority 失敗：回 Step 02／decision packet；
 - repo/check declaration 不完整：補 delivery routing；若 business acceptance requirement 改變，回 Domain lane；
@@ -145,3 +145,52 @@ Step 04 只有在以下條件全部成立才完成：
 ## 邊界
 
 本步不產生 BDD、checker files、task packets 或 product code，也不執行 release。成功只建立 execution basis；它不代表 implementation 或 rollout 已完成。
+
+## UI kind：accepted request → immutable Snapshot
+
+此 additive contract 見 [ADR 0010](../../../docs/adr/0010-ui-feature-snapshot-kind.md)
+（Proposed）。純 UI／copy／style／明確 bug 可走 UI；含業務規則、跨系統、資料或權限
+變更，以及不確定範圍者，必須回 domain 流程。明確 bug 只修復既有明確接受行為。
+UI 路徑不要求 Step 02 Domain Comparison、Graph journey/capability 或 L3 closure。
+不得把 UI verification 稱為 domain confirmation 或 Domain Gate。
+
+先由具名人類接受原始 request、全部 AC 及分類；接受文件必須含：
+
+- `request` 原文、`request_digest`（精確 UTF-8 bytes 的 SHA-256，不 trim）；
+- `acceptance_criteria` 非空陣列，每項 `id`（唯一 `ac:` ID）、`text` 原文及 `digest`；
+- `accepted_by`（具名 `human:`，不可 agent／role）、帶時區 `accepted_at`、`source`；
+- `scope.category`（ui/copy/style/explicit_bug）、`rationale`，以及全部為 boolean false 的
+  `business_rules`／`cross_system`／`data_changes`／`permission_changes`。
+
+Kernel 拒絕缺接受、digest 不符、excluded scope、domain nodes/roots 或 Graph flags。
+人類對分類的誠實性、source 真實性與身分驗證是 **prose-only, unenforced**：本機 parser
+不能判斷任意文字的業務語意，也不能驗證人類身分。接受前須審查全部原文；後續發現
+excluded scope 就停止並建立 domain Snapshot，不在 UI check 中私加業務規則。
+
+```bash
+python3 -B .domain-delivery/kernel/scripts/kernel.py freeze \
+  --kind ui --accepted-request <accepted-request-json> \
+  --feature <feature> --version <v1> \
+  --delivery-lane <lane> --repository <repository-id> \
+  --required-check <repository-id/check-id> --trusted-attestor <kind:name> \
+  --output specs/<feature>/snapshot/<v1>
+```
+
+輸出為 schema v2 `kind: ui` manifest、`UI.md`、`ui-payload.json`，nodes/roots 為空。
+Lanes/repos/checks/attestors 與 domain 相同要求。UI 不使用 Graph pin；其 acceptance
+basis 是凍結的 accepted request，不是 Graph 規則。使用同一 `verify-snapshot` 指令
+驗證原文 digests、payload、rendered bundle、routing 與 snapshot digest，exit 0 才能進
+Step 05。輸出目錄不可覆寫；更正以 `--supersedes` 新版本處理，Graph drift 不適用。
+既有 v1 missing-kind domain Snapshot 的 bytes 與語意維持不變。
+
+### UI kind 完成判準與失敗路由
+
+- 具名 human 接受全部 request/AC 原文與分類，source 可追溯；
+- 新 version directory 未被改寫，UI `verify-snapshot` exit `0`；
+- manifest 的 feature、lanes/repos/checks/attestors 與接受的交付範圍一致；
+- 記錄 snapshot digest，Step 05 以全部 AC 做 coverage。
+
+人類接受 source／分類真實性與交付範圍一致性是 `prose-only, unenforced`，因為
+外部來源與人類意圖不由本機 kernel 認證；text/bundle/routing digests 由 kernel 檢查。
+缺接受或 digest 不符就補正未凍結的 inputs；excluded/uncertain scope 回 domain；
+既有 output 或已凍結內容有錯，就建立 superseding version。UI 不要求 Step 02 report。
