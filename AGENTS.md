@@ -43,7 +43,7 @@ shape instead of naming it.
 
 ```bash
 python3 -B -m unittest discover -s kernel/tests
-python3 -B -m unittest discover -s skills/feature-delivery/tests
+python3 -B -m unittest discover -s skills/delivery-workflow/tests
 python3 -B -m unittest discover -s tests
 ```
 

@@ -133,7 +133,7 @@ Extra repository/check/projection 不是 `incomplete`，而是 invalid contract�
 ## Machine check
 
 ```bash
-python3 -B .domain-delivery/skills/feature-delivery/scripts/validate_delivery_plan.py \
+python3 -B .domain-delivery/skills/delivery-workflow/scripts/validate_delivery_plan.py \
   --snapshot specs/<feature>/snapshot/<version>/snapshot-manifest.json \
   --projection specs/<feature>/delivery/<version>/05-check-projection.json \
   --require-ready

@@ -224,7 +224,7 @@ extensions: {}
 每次產出後都執行：
 
 ```bash
-python3 -B .domain-delivery/skills/feature-delivery/scripts/validate_feature_intent.py --input <01-feature-intent.json>
+python3 -B .domain-delivery/skills/delivery-workflow/scripts/validate_feature_intent.py --input <01-feature-intent.json>
 ```
 
 準備交給 Step 02 時加上 `--require-ready`。Exit `0` 表示 contract 有效且符合呼叫條件；exit `1` 表示 contract 有效但仍是 `incomplete`；exit `2` 表示 JSON、schema、traceability 或 gate 計算無效。

@@ -2,7 +2,7 @@
 
 ## 何時讀
 
-Canonical Domain Markdown 已變更、需要判斷 graph commit readiness，或 `$feature-delivery`/released implementation 帶回 drift、contradiction、missing rule 或 new business learning 時讀本檔。
+Canonical Domain Markdown 已變更、需要判斷 graph commit readiness，或 `$delivery-workflow`/released implementation 帶回 drift、contradiction、missing rule 或 new business learning 時讀本檔。
 
 ## Enforcement note
 
@@ -42,7 +42,7 @@ Validation 後檢查 scoped diff：canonical Markdown與 regenerated `domain-ind
 - unresolved blockers 沒被誤稱 accepted truth；
 - diff scope與 requested write permission一致。
 
-Commit/push 需另外明確授權。未 commit 時不要提供假的 graph version；實際 commit 後才回傳 full commit SHA、changed node IDs與 machine results給 `$feature-delivery`。Feature Skill 仍須重新選 active slice、算 `requires` closure並執行自己的 gate。
+Commit/push 需另外明確授權。未 commit 時不要提供假的 graph version；實際 commit 後才回傳 full commit SHA、changed node IDs與 machine results給 `$delivery-workflow`。Feature Skill 仍須重新選 active slice、算 `requires` closure並執行自己的 gate。
 
 ## B. Consume drift and implementation feedback
 
@@ -60,7 +60,7 @@ Drift output 只分類 global/selected node change，不自動 rebaseline、conf
 
 - missing journey/capability/boundary evidence → 01；
 - new meaning、contradiction、policy/term/authority question → 02 的 candidate/disputed node或 decision packet；
-- implementation bug against unchanged snapshot → 回 `$feature-delivery`/human owner分類與處理，不改 domain meaning；
+- implementation bug against unchanged snapshot → 回 `$delivery-workflow`/human owner分類與處理，不改 domain meaning；
 - confirmed graph correction影響 frozen basis → 保留 Snapshot immutable，由 human owner決定 corrective change、new feature、rebaseline或 v2。
 
 任何 graph write 都重新走本檔 A 的 compile/gate-index/readiness。不要修改 evidence ledger、Snapshot或 product code來消除 drift。

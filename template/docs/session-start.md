@@ -28,7 +28,7 @@ Enforcement note: the reading and operating rules here are
 
 - Domain lane work → the `domain-graph` Skill plus the one reference the task
   needs.
-- Delivery lane work → the `feature-delivery` Skill. The lane split comes from
+- Delivery lane work → the `delivery-workflow` Skill. The lane split comes from
   the frozen snapshot, not from a guess.
 - Authoring nodes → [`domain/SCHEMA.md`](domain/SCHEMA.md).
 - Method decisions →

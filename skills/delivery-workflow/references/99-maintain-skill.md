@@ -1,4 +1,4 @@
-# 99 · 維護 Feature Delivery Skill
+# 99 · 維護 Delivery Workflow Skill
 
 只有修改本 Skill、numbered references、schemas、scripts、tests 或 eval cases 時讀本文件；正常 Feature Delivery 不讀。
 
@@ -17,7 +17,7 @@ Python validators 是 executable shape 與 gate authority：
 
 ```bash
 python3 -B -m unittest discover -s kernel/tests
-python3 -B -m unittest discover -s skills/feature-delivery/tests
+python3 -B -m unittest discover -s skills/delivery-workflow/tests
 python3 -B -m unittest discover -s tests
 ```
 
@@ -32,8 +32,8 @@ Contract parity tests 必須同時證明 schema/runtime 的 top-level 與 nested
 ```bash
 eval_outputs="$(mktemp -d)"
 # Independent invocation writes ${eval_outputs}/<case-id>.json here.
-python3 -B skills/feature-delivery/scripts/run_intake_evals.py \
-  --cases skills/feature-delivery/tests/fixtures/intake \
+python3 -B skills/delivery-workflow/scripts/run_intake_evals.py \
+  --cases skills/delivery-workflow/tests/fixtures/intake \
   --outputs "$eval_outputs"
 ```
 

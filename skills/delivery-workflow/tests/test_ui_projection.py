@@ -76,7 +76,7 @@ class UIProjectionTests(unittest.TestCase):
             contract.load_verified_snapshot(self.manifest)
 
     def test_ui_schema_and_runtime_version_match(self):
-        schema = json.loads((PACKAGE_ROOT / 'skills/feature-delivery/references/05-06-delivery-plan.schema.json').read_text())
+        schema = json.loads((PACKAGE_ROOT / 'skills/delivery-workflow/references/05-06-delivery-plan.schema.json').read_text())
         definitions = schema['$defs']
         self.assertEqual(definitions['uiCheckProjection']['properties']['schema_version']['const'], contract.UI_PROJECTION_VERSION)
         self.assertEqual(definitions['checkProjection']['properties']['schema_version']['const'], contract.PROJECTION_VERSION)

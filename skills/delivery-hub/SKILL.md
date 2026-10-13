@@ -10,7 +10,7 @@ description: 安裝、檢查與升級 Delivery Hub 所使用的 shared workflow 
 full commit 與 package digest（[ADR 0008](../../docs/adr/0008-distribute-shared-workflow-as-pinned-submodule.md)）。
 
 Domain 與 Delivery lane 分別由 [`domain-graph`](../domain-graph/SKILL.md) 與
-[`feature-delivery`](../feature-delivery/SKILL.md) 負責；本 Skill 不碰 domain
+[`delivery-workflow`](../delivery-workflow/SKILL.md) 負責；本 Skill 不碰 domain
 meaning、Snapshot 或 evidence。
 
 在 Hub 中選用本 Skill 時，先依 Hub 的 `docs/skill-entry.md` 確認 pinned procedure 與來源；
@@ -96,7 +96,7 @@ upstream，不是留在 Hub 裡。
 
 ```bash
 python3 -B .domain-delivery/skills/delivery-hub/scripts/hub.py doctor \
-  --skill-source /absolute/package/skills/feature-delivery/SKILL.md
+  --skill-source /absolute/package/skills/delivery-workflow/SKILL.md
 ```
 
 指定來源必須是三個 lifecycle 的 SKILL.md 之一。Doctor 以 installed package 的 tracked file 清單逐檔比對來源套件，不只比 VERSION 或 router；cache 不需要 Git metadata。缺檔或 bytes 不同是 finding。原有 lock／HEAD／digest／gitlink 檢查仍全部執行。

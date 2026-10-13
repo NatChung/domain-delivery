@@ -111,7 +111,7 @@ Extra repo/check/projection、wrong digest、duplicate assignment、self/cyclic 
 ## Machine check
 
 ```bash
-python3 -B .domain-delivery/skills/feature-delivery/scripts/validate_delivery_plan.py \
+python3 -B .domain-delivery/skills/delivery-workflow/scripts/validate_delivery_plan.py \
   --snapshot specs/<feature>/snapshot/<version>/snapshot-manifest.json \
   --projection specs/<feature>/delivery/<version>/05-check-projection.json \
   --task-plan specs/<feature>/delivery/<version>/06-repository-task-plan.json \

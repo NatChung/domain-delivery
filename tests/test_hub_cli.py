@@ -1090,7 +1090,7 @@ class DoctorSkillSourceTests(unittest.TestCase):
         temporary = self.stack.enter_context(tempfile.TemporaryDirectory())
         self.cache = Path(temporary) / "host-cache"
         shutil.copytree(self.package.path, self.cache, ignore=shutil.ignore_patterns(".git"))
-        self.source = self.cache / "skills/feature-delivery/SKILL.md"
+        self.source = self.cache / "skills/delivery-workflow/SKILL.md"
 
     def doctor(self, source=None):
         return run("doctor", "--hub", str(self.hub.path),
@@ -1108,7 +1108,7 @@ class DoctorSkillSourceTests(unittest.TestCase):
         self.assertEqual((contents(self.hub.path), contents(self.cache)), before)
 
     def test_equal_router_and_version_do_not_hide_changed_package_files(self):
-        for relative in ("skills/feature-delivery/references/01-understand-request.md",
+        for relative in ("skills/delivery-workflow/references/01-understand-request.md",
                          "kernel/scripts/kernel.py", "docs/workflow.md"):
             with self.subTest(relative=relative):
                 target = self.cache / relative
@@ -1138,6 +1138,15 @@ class DoctorSkillSourceTests(unittest.TestCase):
                 self.assertIn("--skill-source must name", result.stderr)
                 self.assertNotIn("Traceback", result.stderr)
 
+    def test_legacy_lifecycle_is_rejected_even_with_identical_router_bytes(self):
+        legacy = self.cache / "skills/feature-delivery/SKILL.md"
+        legacy.parent.mkdir()
+        legacy.write_bytes(self.source.read_bytes())
+        result = self.doctor(legacy)
+        self.assertEqual(result.returncode, INVALID, result.stdout + result.stderr)
+        self.assertIn("--skill-source must name", result.stderr)
+        self.assertNotIn("healthy:", result.stdout)
+
     def test_matching_source_does_not_bypass_lock_digest_or_commit_checks(self):
         lock = self.hub.lock()
         lock["package_digest"] = "sha256:" + "0" * 64
@@ -1161,7 +1170,7 @@ class DoctorSkillSourceTests(unittest.TestCase):
     def test_unresolvable_source_path_is_a_clean_error(self):
         loop = self.cache / "loop"
         loop.symlink_to("loop")
-        result = self.doctor(loop / "skills/feature-delivery/SKILL.md")
+        result = self.doctor(loop / "skills/delivery-workflow/SKILL.md")
         self.assertEqual(result.returncode, INVALID, result.stdout + result.stderr)
         self.assertIn("cannot resolve --skill-source", result.stderr)
         self.assertNotIn("Traceback", result.stderr)

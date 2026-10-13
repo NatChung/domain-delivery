@@ -54,7 +54,7 @@ across journeys before proposing a durable boundary.
 
 - Use the `domain-graph` Skill for Domain-lane discovery, candidate shaping,
   decision packets and graph publication.
-- Use the `feature-delivery` Skill for a concrete request moving through Feature
+- Use the `delivery-workflow` Skill for a concrete request moving through Feature
   Intent, active slice, Snapshot, repository loops and bound evidence. Domain
   gaps return to the Domain lane; they are not patched into a Snapshot.
 - Freeze a snapshot before deriving BDD or writing product code.

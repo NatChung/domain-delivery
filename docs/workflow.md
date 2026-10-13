@@ -18,6 +18,9 @@ Distribution 紀錄：[ADR 0008](adr/0008-distribute-shared-workflow-as-pinned-s
 這是每個安裝此版本的 Delivery Hub 共用的方法唯一來源。每個 Hub 擁有自己的
 Domain Graph 與 local adapter；任何 Hub 都不能複製本方法後無聲地分叉。
 
+Steps 01–08 的唯一流程入口是 [`delivery-workflow`](../skills/delivery-workflow/SKILL.md)；
+numbered references 提供各步 procedure，本文件維持 shared method 的唯一來源。
+
 本方法分開兩種以不同速度演進的變更：
 
 ```text

@@ -2,7 +2,7 @@
 
 Use this entry only when the task selects Domain Delivery under this Hub's existing workflow scope. Other team workflows keep their own entrypoints and authority.
 
-1. Read this Hub's `workflow.lock` and select the required lifecycle (`delivery-hub`, `domain-graph` or `feature-delivery`). Read its procedure from `.domain-delivery/skills/<lifecycle>/SKILL.md` in this Hub. A host-cached Skill is a discovery entry, not a replacement for that pinned procedure.
+1. Read this Hub's `workflow.lock` and select the required lifecycle (`delivery-hub`, `domain-graph` or `delivery-workflow`). Read its procedure from `.domain-delivery/skills/<lifecycle>/SKILL.md` in this Hub. A host-cached Skill is a discovery entry, not a replacement for that pinned procedure.
 2. From the Hub root, verify the actual Skill file you intend to use:
 
    ```bash

@@ -545,7 +545,7 @@ def skill_source_findings(package_root: Path, supplied: Path) -> list[str]:
         source = supplied.expanduser().resolve()
     except (OSError, RuntimeError) as exc:
         raise HubError(f"cannot resolve --skill-source {supplied}: {exc}") from exc
-    lifecycle_skills = {"delivery-hub", "domain-graph", "feature-delivery"}
+    lifecycle_skills = {"delivery-hub", "domain-graph", "delivery-workflow"}
     if (source.name != "SKILL.md" or source.parent.name not in lifecycle_skills
             or source.parent.parent.name != "skills" or not source.is_file()):
         raise HubError(
