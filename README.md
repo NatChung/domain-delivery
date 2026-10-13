@@ -22,7 +22,7 @@ package as a submodule at the fixed path `.domain-delivery/` and pin a tag:
 
 ```bash
 git submodule add https://github.com/NatChung/domain-delivery.git .domain-delivery
-git -C .domain-delivery checkout v0.5.0
+git -C .domain-delivery checkout v0.6.0
 python3 -B .domain-delivery/skills/delivery-hub/scripts/hub.py init --project my-product
 ```
 
@@ -92,7 +92,7 @@ Skills, kernel, schemas, template and docs ship as one atomic SemVer release
 ([ADR 0004](docs/adr/0004-shared-workflow-separate-domain-graphs.md),
 [0008](docs/adr/0008-distribute-shared-workflow-as-pinned-submodule.md)).
 Consumers cannot mix component versions. See [`CHANGELOG.md`](CHANGELOG.md).
-Before adopting the planned Skill rename,
+Before adopting the 0.6.0 Skill rename,
 follow [`migrations/delivery-workflow-rename.md`](migrations/delivery-workflow-rename.md).
 
 ## Licence

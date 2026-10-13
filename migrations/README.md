@@ -40,6 +40,6 @@ maintainer can reconcile it without silently losing instructions.
 The proposed additive UI contract has a manual adapter migration guide in
 [ui-snapshot-kind.md](ui-snapshot-kind.md); it does not rewrite Hub files.
 
-The planned 0.6.0 breaking Skill rename has a manual consumer checklist in
+The 0.6.0 breaking Skill rename has a manual consumer checklist in
 [delivery-workflow-rename.md](delivery-workflow-rename.md). It is not an automatic
 migration and does not rewrite Hub files.

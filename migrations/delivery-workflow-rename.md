@@ -1,8 +1,7 @@
 # Rename the delivery Skill to delivery-workflow
 
-Target: planned 0.6.0. This is a breaking path and invocation rename from 0.5.0,
-not a change to Steps 01–08, the kernel or artifact contracts. The source branch
-still has VERSION 0.5.0; it is not a tagged 0.6.0 release.
+Target: 0.6.0. This is a breaking path and invocation rename from 0.5.0,
+not a change to Steps 01–08, the kernel or artifact contracts.
 
 `skills/delivery-workflow/` is the only delivery Skill directory. There is no
 `skills/feature-delivery/` compatibility directory, symlink or script redirect.
