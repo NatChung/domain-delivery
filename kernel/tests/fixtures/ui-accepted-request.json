@@ -1,0 +1,27 @@
+{
+  "request": "Change the sample dialog button label to Close.\nKeep its existing action.",
+  "request_digest": "sha256:6e1b299b3f509b5893834aa347494c14bd0fdc4940ab4b0f8d8fa264e036adbb",
+  "acceptance_criteria": [
+    {
+      "id": "ac:1",
+      "text": "The button displays Close.",
+      "digest": "sha256:031ab4f6e98af55878ee309b566beabc9ca7cfb98e50913755516f10ff424004"
+    },
+    {
+      "id": "ac:2",
+      "text": "Activating the button dismisses the dialog.",
+      "digest": "sha256:3a876916d4ffb67750b01cb4f7e0ff89d8ac6df3d1096fb1967a72a4dbdbc9b2"
+    }
+  ],
+  "accepted_by": "human:sample-reviewer",
+  "accepted_at": "2026-09-01T12:00:00Z",
+  "source": "document:sample-ui-acceptance",
+  "scope": {
+    "category": "copy",
+    "rationale": "Presentation text changes only; the existing dialog action is unchanged.",
+    "business_rules": false,
+    "cross_system": false,
+    "data_changes": false,
+    "permission_changes": false
+  }
+}

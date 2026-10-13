@@ -48,7 +48,7 @@ Schema package.
 
 ## Immutable Feature Snapshot
 
-Only a committed, reproducible `confirmed L3` dependency closure can freeze.
+Domain kind (the default) freezes only a committed, reproducible `confirmed L3` dependency closure.
 Every declared repository must have at least one repository-scoped required
 check and a declared trusted attestor.
 
@@ -175,3 +175,14 @@ Confirmed authorities, L3 nodes and snapshots created by these tests are
 synthetic fixtures in temporary Git repositories. Passing kernel tests says
 nothing about the maturity or confirmation status of any Hub's actual Domain
 Graph.
+
+## UI Feature Snapshot (proposed additive contract)
+
+`freeze --kind ui --accepted-request <JSON>` accepts a verbatim request/AC payload,
+its exact text digests, named human acceptance provenance and explicit scope
+exclusions. Do not pass Graph inputs. Routing/check/attestor flags are unchanged.
+It publishes schema v2 with UI.md/ui-payload.json; `verify-snapshot` needs no Graph
+repository and checks deterministic rendering and content integrity. Domain
+schema v1 and default CLI/API output remain unchanged. See ADR 0010, the Step 04
+reference and migrations/ui-snapshot-kind.md for the full wire contract and
+human review limits. Graph drift does not apply to UI snapshots.

@@ -202,6 +202,19 @@ Snapshots 是 immutable。當 graph 改變時，agent 會回報 drift，但仍�
 snapshot 繼續，除非 human 判定此修正必須 rebaseline。Replacement 以新版本
 （`v2`）取代 `v1`；任何 process 都不能原地修改 `v1`。
 
+### 9.1 UI kind（ADR 0010，Proposed additive contract）
+
+以上 Domain Gate／Graph closure 要求維持 domain kind 的語意。純 UI、copy、style
+或明確既有行為 bug 可改用 schema v2 `kind: ui`；缺 kind 的 schema v1 仍是 domain。
+UI 不含 Graph pin 或 domain nodes，改以不可變的 accepted request／逐條 AC 原文、
+text digests、具名 human acceptance time/source 與接受的 scope classification 為 basis。
+業務規則、跨系統、資料或權限變更及不確定範圍必須走 domain。Kernel 拒絕 excluded
+scope 聲明、非 human 接受、Graph inputs、digest mismatch 與缺 delivery checks/attestors。
+分類真實性與人類身分認證是 `prose-only, unenforced`，因 parser 不辨識任意業務語意
+或認證 source；人類必須審查全部原文，發現 excluded scope 即回 domain rebaseline。
+UI Step 05 以 check-projection/v0.2 全數覆蓋 AC；Step 06–08 routing/evidence gate 不變。
+UI 驗證不是 Domain Gate，不升級任何 Graph status/readiness。見 Step 04/05 procedure。
+
 ## 10. Scrum、Definition of Ready 與 change classification
 
 建立 executable Sprint Backlog 前，先把 PO／PM shaping 與 agent execution 分開：

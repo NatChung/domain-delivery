@@ -32,6 +32,7 @@ from domain_delivery_kernel import (  # noqa: E402
 
 PASS, FAIL, INVALID = 0, 1, 2
 PROJECTION_VERSION = "check-projection/v0.1"
+UI_PROJECTION_VERSION = "check-projection/v0.2"
 PROJECTION_STATUSES = {"ready_for_task_planning", "incomplete"}
 LAYERS = {
     "bdd",
@@ -191,8 +192,10 @@ def validate_projection(
     projection = exact_object(projection, "projection", PROJECTION_FIELDS, errors)
     if projection is None:
         return errors
-    if projection.get("schema_version") != PROJECTION_VERSION:
-        errors.append(f"schema_version must be {PROJECTION_VERSION}")
+    ui = snapshot.get("kind") == "ui"
+    expected_version = UI_PROJECTION_VERSION if ui else PROJECTION_VERSION
+    if projection.get("schema_version") != expected_version:
+        errors.append(f"schema_version must be {expected_version}")
     if projection.get("projection_status") not in PROJECTION_STATUSES:
         errors.append("projection_status is invalid")
     if projection.get("feature") != snapshot.get("feature"):
@@ -205,7 +208,8 @@ def validate_projection(
     if not isinstance(projection.get("extensions"), dict):
         errors.append("extensions must be an object")
 
-    payload_path = snapshot_path.parent / snapshot["domain_bundle"]["payload_path"]
+    declaration = snapshot["ui_bundle"] if ui else snapshot["domain_bundle"]
+    payload_path = snapshot_path.parent / declaration["payload_path"]
     try:
         payload = load_kernel_json(payload_path)
     except KernelError as exc:
@@ -228,6 +232,17 @@ def validate_projection(
         for field in RULE_FIELDS
         for statement in node.get(field, [])
     }
+    rule_fields = {"acceptance_criteria"} if ui else RULE_FIELDS
+    if ui:
+        # AC IDs are references, not Domain Graph nodes.
+        payload_by_id = {
+            ac["id"]: {"id": ac["id"], "acceptance_criteria": [ac["text"]]}
+            for ac in payload.get("acceptance_criteria", [])
+        } if isinstance(payload, dict) else {}
+        expected_rule_refs = {
+            (ac_id, "acceptance_criteria", node["acceptance_criteria"][0])
+            for ac_id, node in payload_by_id.items()
+        }
     projected_rule_refs: set[tuple[str, str, str]] = set()
     items = projection.get("projections")
     if not isinstance(items, list):
@@ -297,17 +312,17 @@ def validate_projection(
             statement = rule.get("statement")
             nonempty_string(node_id, f"{rule_path}.node_id", errors)
             nonempty_string(statement, f"{rule_path}.statement", errors)
-            if field not in RULE_FIELDS:
+            if field not in rule_fields:
                 errors.append(f"{rule_path}.field is invalid")
             key = (str(node_id), str(field), str(statement))
             if key in seen_rule_refs:
                 errors.append(f"{rule_path} duplicates a source rule")
             seen_rule_refs.add(key)
             node = payload_by_id.get(node_id) if isinstance(node_id, str) else None
-            frozen_values = node.get(field, []) if node and field in RULE_FIELDS else []
+            frozen_values = node.get(field, []) if node and field in rule_fields else []
             if not node or statement not in frozen_values:
                 errors.append(
-                    f"{rule_path} does not resolve to an exact frozen domain rule"
+                    f"{rule_path} does not resolve to an exact frozen {'acceptance' if ui else 'domain'} rule"
                 )
             elif isinstance(statement, str):
                 projected_rule_refs.add((node_id, field, statement))

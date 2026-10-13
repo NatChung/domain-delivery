@@ -1,100 +1,410 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "Machine-readable mirror of the domain-delivery-kernel runtime contract.",
   "$id": "https://domain-delivery.example/schema/feature-snapshot.schema.json",
   "title": "Immutable Feature Snapshot manifest",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "feature",
-    "snapshot_version",
-    "state",
-    "graph_commit",
-    "graph_source_root",
-    "graph_index_digest",
-    "root_nodes",
-    "nodes",
-    "delivery_lanes",
-    "repositories",
-    "required_checks",
-    "domain_bundle",
-    "snapshot_digest"
+  "$comment": "v1 missing kind defaults to domain; v2 ui has no Graph. Runtime additionally checks digests, unique AC IDs and repository coverage.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/domainSnapshot"
+    },
+    {
+      "$ref": "#/$defs/uiSnapshot"
+    }
   ],
-  "properties": {
-    "schema_version": {"const": 1},
-    "feature": {"$ref": "#/$defs/name"},
-    "snapshot_version": {"$ref": "#/$defs/name"},
-    "state": {"const": "frozen"},
-    "graph_commit": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"},
-    "graph_source_root": {"type": "string", "minLength": 1},
-    "graph_index_digest": {"$ref": "#/$defs/digest"},
-    "root_nodes": {
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": {"$ref": "#/$defs/nodeId"}
-    },
-    "nodes": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "type", "source_path", "content_digest"],
-        "properties": {
-          "id": {"$ref": "#/$defs/nodeId"},
-          "type": {"enum": ["authority", "bounded_context", "capability", "contract", "journey", "policy", "question", "term"]},
-          "source_path": {"type": "string", "minLength": 1},
-          "content_digest": {"$ref": "#/$defs/digest"}
-        }
-      }
-    },
-    "delivery_lanes": {"$ref": "#/$defs/nonemptyNames"},
-    "repositories": {"$ref": "#/$defs/nonemptyNames"},
-    "required_checks": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["repository_id", "check_id", "trusted_attestors"],
-        "properties": {
-          "repository_id": {"$ref": "#/$defs/name"},
-          "check_id": {"$ref": "#/$defs/name"},
-          "trusted_attestors": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {"$ref": "#/$defs/identity"}
-          }
-        }
-      }
-    },
-    "domain_bundle": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["path", "digest", "payload_path", "payload_digest"],
-      "properties": {
-        "path": {"const": "DOMAIN.md"},
-        "digest": {"$ref": "#/$defs/digest"},
-        "payload_path": {"const": "domain-payload.json"},
-        "payload_digest": {"$ref": "#/$defs/digest"}
-      }
-    },
-    "supersedes": {"$ref": "#/$defs/digest"},
-    "snapshot_digest": {"$ref": "#/$defs/digest"}
-  },
   "$defs": {
-    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-    "identity": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*:[A-Za-z0-9][A-Za-z0-9._-]*$"},
-    "name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
-    "nodeId": {"type": "string", "pattern": "^[a-z_]+:[a-z0-9][a-z0-9._-]*$"},
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "identity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*:[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "nodeId": {
+      "type": "string",
+      "pattern": "^[a-z_]+:[a-z0-9][a-z0-9._-]*$"
+    },
     "nonemptyNames": {
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": {"$ref": "#/$defs/name"}
+      "items": {
+        "$ref": "#/$defs/name"
+      }
+    },
+    "domainSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "feature",
+        "snapshot_version",
+        "state",
+        "graph_commit",
+        "graph_source_root",
+        "graph_index_digest",
+        "root_nodes",
+        "nodes",
+        "delivery_lanes",
+        "repositories",
+        "required_checks",
+        "domain_bundle",
+        "snapshot_digest"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "feature": {
+          "$ref": "#/$defs/name"
+        },
+        "snapshot_version": {
+          "$ref": "#/$defs/name"
+        },
+        "state": {
+          "const": "frozen"
+        },
+        "graph_commit": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "graph_source_root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "graph_index_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "root_nodes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nodeId"
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "type",
+              "source_path",
+              "content_digest"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/nodeId"
+              },
+              "type": {
+                "enum": [
+                  "authority",
+                  "bounded_context",
+                  "capability",
+                  "contract",
+                  "journey",
+                  "policy",
+                  "question",
+                  "term"
+                ]
+              },
+              "source_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "content_digest": {
+                "$ref": "#/$defs/digest"
+              }
+            }
+          }
+        },
+        "delivery_lanes": {
+          "$ref": "#/$defs/nonemptyNames"
+        },
+        "repositories": {
+          "$ref": "#/$defs/nonemptyNames"
+        },
+        "required_checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "repository_id",
+              "check_id",
+              "trusted_attestors"
+            ],
+            "properties": {
+              "repository_id": {
+                "$ref": "#/$defs/name"
+              },
+              "check_id": {
+                "$ref": "#/$defs/name"
+              },
+              "trusted_attestors": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/identity"
+                }
+              }
+            }
+          }
+        },
+        "domain_bundle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "digest",
+            "payload_path",
+            "payload_digest"
+          ],
+          "properties": {
+            "path": {
+              "const": "DOMAIN.md"
+            },
+            "digest": {
+              "$ref": "#/$defs/digest"
+            },
+            "payload_path": {
+              "const": "domain-payload.json"
+            },
+            "payload_digest": {
+              "$ref": "#/$defs/digest"
+            }
+          }
+        },
+        "supersedes": {
+          "$ref": "#/$defs/digest"
+        },
+        "snapshot_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "kind": {
+          "const": "domain"
+        }
+      }
+    },
+    "uiSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "kind",
+        "feature",
+        "snapshot_version",
+        "state",
+        "root_nodes",
+        "nodes",
+        "accepted_request",
+        "delivery_lanes",
+        "repositories",
+        "required_checks",
+        "ui_bundle",
+        "snapshot_digest"
+      ],
+      "properties": {
+        "feature": {
+          "$ref": "#/$defs/name"
+        },
+        "snapshot_version": {
+          "$ref": "#/$defs/name"
+        },
+        "state": {
+          "const": "frozen"
+        },
+        "delivery_lanes": {
+          "$ref": "#/$defs/nonemptyNames"
+        },
+        "repositories": {
+          "$ref": "#/$defs/nonemptyNames"
+        },
+        "required_checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "repository_id",
+              "check_id",
+              "trusted_attestors"
+            ],
+            "properties": {
+              "repository_id": {
+                "$ref": "#/$defs/name"
+              },
+              "check_id": {
+                "$ref": "#/$defs/name"
+              },
+              "trusted_attestors": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/identity"
+                }
+              }
+            }
+          }
+        },
+        "snapshot_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "supersedes": {
+          "$ref": "#/$defs/digest"
+        },
+        "schema_version": {
+          "const": 2
+        },
+        "kind": {
+          "const": "ui"
+        },
+        "root_nodes": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "nodes": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "accepted_request": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "request",
+            "request_digest",
+            "acceptance_criteria",
+            "accepted_by",
+            "accepted_at",
+            "source",
+            "scope"
+          ],
+          "properties": {
+            "request": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "request_digest": {
+              "$ref": "#/$defs/digest"
+            },
+            "accepted_by": {
+              "type": "string",
+              "pattern": "^human:[A-Za-z0-9][A-Za-z0-9._-]*$"
+            },
+            "accepted_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "acceptance_criteria": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "text",
+                  "digest"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^ac:[a-z0-9][a-z0-9._-]*$"
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  "digest": {
+                    "$ref": "#/$defs/digest"
+                  }
+                }
+              }
+            },
+            "scope": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "category",
+                "rationale",
+                "business_rules",
+                "cross_system",
+                "data_changes",
+                "permission_changes"
+              ],
+              "properties": {
+                "category": {
+                  "enum": [
+                    "ui",
+                    "copy",
+                    "style",
+                    "explicit_bug"
+                  ]
+                },
+                "rationale": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                },
+                "business_rules": {
+                  "const": false
+                },
+                "cross_system": {
+                  "const": false
+                },
+                "data_changes": {
+                  "const": false
+                },
+                "permission_changes": {
+                  "const": false
+                }
+              }
+            }
+          }
+        },
+        "ui_bundle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "digest",
+            "payload_path",
+            "payload_digest"
+          ],
+          "properties": {
+            "path": {
+              "const": "UI.md"
+            },
+            "digest": {
+              "$ref": "#/$defs/digest"
+            },
+            "payload_path": {
+              "const": "ui-payload.json"
+            },
+            "payload_digest": {
+              "$ref": "#/$defs/digest"
+            }
+          }
+        }
+      }
     }
   }
 }

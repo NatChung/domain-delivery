@@ -13,5 +13,7 @@ them, and records its own Hub-specific decisions in its own `docs/adr/`.
 | [0008](0008-distribute-shared-workflow-as-pinned-submodule.md) | Distribute as a pinned Git submodule |
 | [0009](0009-public-shared-workflow-repo-with-fresh-history.md) | Publish from a personal account with fresh history |
 
+| [0010](0010-ui-feature-snapshot-kind.md) | UI Feature Snapshot kind (Proposed) |
+
 Numbering starts at 0004 because 0001–0003 are Hub-specific decisions that
 stayed behind in the first consumer Hub.

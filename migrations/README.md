@@ -36,3 +36,6 @@ The 0.1.0 release contained no migrations. Release 0.3.0 adds
 pointer to both host guides without replacing local policies. An existing,
 different entry file or managed pointer is refused before guide edits, so a
 maintainer can reconcile it without silently losing instructions.
+
+The proposed additive UI contract has a manual adapter migration guide in
+[ui-snapshot-kind.md](ui-snapshot-kind.md); it does not rewrite Hub files.
