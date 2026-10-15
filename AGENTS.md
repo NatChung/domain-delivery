@@ -49,3 +49,21 @@ python3 -B -m unittest discover -s tests
 
 Commit messages are a published surface. Keep them free of consumer
 identifiers, exactly like the files.
+
+## Agent skills
+
+### Issue tracker
+
+Before creating, reading or updating todos and specs, read
+[docs/agents/issue-tracker.md](docs/agents/issue-tracker.md). Use this repository's
+GitHub Issues as the tracker.
+
+### Triage labels
+
+Before triaging issues, read the five canonical label mappings in
+[docs/agents/triage-labels.md](docs/agents/triage-labels.md).
+
+### Domain docs
+
+Before exploring terminology or decisions, read the single-context navigation
+and consumer rules in [docs/agents/domain.md](docs/agents/domain.md).
