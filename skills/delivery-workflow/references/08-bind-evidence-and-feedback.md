@@ -104,6 +104,14 @@ Ledger 只保存 digests，不保存 checker/output/attestation bytes。External
 
 若 `/tmp` artifacts 尚未保存，不刪除或宣稱 run 可重現。沒有 external anchor 時，ledger 只有 tamper-evident，不是 tamper-proof。
 
+## Optional dual-driver evidence
+
+For opted-in runs, apply [dual-driver reporting](05-dual-driver-acceptance.md#4-report-coverage-and-hand-off-step-08)
+to the retained catalog/runtime/fault artifacts. Report Graph rules verified via
+UI per surface with its frozen-slice denominator and gaps, plus a separate advisory
+status. Retain the artifacts with the run; the kernel does not validate this
+catalog or metric, and existing evidence/attestation gates remain unchanged.
+
 ## 6. 產出 `08-domain-feedback.md`
 
 把 delivery 中發現的 domain learnings 使用 numbered file 回到 Domain lane：

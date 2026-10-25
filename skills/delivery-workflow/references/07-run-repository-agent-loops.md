@@ -43,6 +43,15 @@ Expected values 來自 frozen Snapshot/numbered spec，不用 production impleme
 
 Provider/consumer contract 依 Step 06 ordering 執行。Cross-repo behaviour 要在各 repo 有各自可觀察的 contract seam；單邊 test pass 不證明整條 wire 相容。
 
+## Optional dual-driver execution
+
+For opted-in packets, execute the [dual-driver procedure](05-dual-driver-acceptance.md)
+after establishing the shared feature basis: API first, then the same rows through
+selected UI surfaces, with actual step surfaces and broken/restored proof for new
+bindings. Save advisory artifacts under `reports/dual-driver/` and hand them to
+Step 08 separately from existing required-check outputs. An incomplete advisory
+experiment never becomes a UI coverage claim or changes a frozen check result.
+
 ## 3. Review、refactor 與 architecture checks
 
 Behaviour cycles 全部 green 後：

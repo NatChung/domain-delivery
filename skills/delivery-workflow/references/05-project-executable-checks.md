@@ -60,6 +60,14 @@ BDD 是 Snapshot projection，不用來反向決定 Snapshot。若合理 scenari
 - brownfield baseline/ratchet treatment（若適用）；
 - unresolved item。Unresolved business rule 會 block readiness。
 
+## Optional dual-driver planning
+
+If `extensions.dual_driver.enabled` is true, follow
+[dual-driver acceptance](05-dual-driver-acceptance.md) to generate a shared
+scenario/example catalog from these feature files and plan API/UI bindings.
+Keep the flag and advisory paths in `extensions`; it adds no required check or
+new validator gate. Its checklist owns the additional advisory completion claim.
+
 ## 3. 建立 `05-check-projection.json`
 
 以下是 non-canonical authoring example；欄位 authority 仍是 validator：

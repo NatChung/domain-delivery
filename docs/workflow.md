@@ -262,6 +262,17 @@ Snapshot 是 agent work 的 semantic Definition of Ready。Team capacity、depen
 BDD 是 snapshot 的 projection，不是用來決定 snapshot 的 input。Snapshot 可以要求
 named check，不需要指定 Java、Flutter、TypeScript 或特定 framework。
 
+### 11.1 Optional dual-driver acceptance
+
+When Step 05 `extensions.dual_driver.enabled` is true, use
+[dual-driver acceptance](../skills/delivery-workflow/references/05-dual-driver-acceptance.md):
+Graph-derived BDD runs first through API, then the same scenarios through each
+selected UI surface. Steps 05–06 plan bindings; Step 07 executes and proves new
+bindings with a broken/restored experiment; Step 08 retains evidence and reports
+Graph rules verified via UI. Initially advisory and `prose-only, unenforced`
+because driver execution and semantic surface classification belong to product
+adapters; no existing Snapshot or required-check gate changes.
+
 ## 12. Repository Agent Loops 與 brownfield ratchets
 
 每個受影響的 repository 都依同一份 snapshot 執行自己的 loop：
