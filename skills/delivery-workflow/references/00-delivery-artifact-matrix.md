@@ -32,6 +32,17 @@ Step 03 只把 implementation evidence 回饋 Step 02；它不是通往 Step 04 
 | 07 | One repository packet + pinned Snapshot/Projection + repo-local guides | Product-repo tests/contracts/code, checker files and `/tmp/07-...` raw outputs | Step 08 | Native red → green loop and all packet criteria complete；exit `1/2/3` may enter Step 08 only to bind a failed run | Snapshot governs behaviour；product repo governs implementation and native quality rules | Product-repo native test/contract/architecture commands；no duplicate hub pass artifact. Later `record-result` recomputes repo/checker/output binding | Check failure stays in repo loop after optional failed-run binding；snapshot contradiction stops affected loops and triggers human rebaseline |
 | 08 | Verified Snapshot + checker/output files + product-repo state + independent attestation artifact | `evidence/<feature>/<run>/check-ledger.jsonl`, verified terminal hash, and numbered `08-domain-feedback.md` handoff | Delivery/release decision + `$domain-graph` | Evidence result classified as failed、kernel-verified unanchored，或 externally anchored | Evidence proves declared execution integrity, not new Domain Truth；PM/domain authority handles feedback confirmation；release owner decides rollout | Evidence kernel owns ledger integrity；`$domain-graph` owns feedback classification and canonical graph writes；authentication、anchoring與 rollout remain external/human | Missing/fail/N/A/untrusted attestation means delivery evidence gate fails；feedback routes to Domain Skill and never mutates graph or snapshot inside Step 08 |
 
+## Optional advisory handoff
+
+When the Step 05 `extensions.dual_driver.enabled` flag is true,
+[dual-driver acceptance](05-dual-driver-acceptance.md) owns an additional
+catalog → API-first/UI runtime + binding-fault artifacts → UI coverage report
+handoff across Steps 05–08. Existing planning `extensions` carry configuration;
+product repositories retain runtime artifacts under `reports/dual-driver/`.
+This handoff is `prose-only, unenforced` because existing validators/kernel do
+not inspect adapter execution or semantic UI credit. It adds no readiness gate,
+required check, Snapshot mutation or independent attestation substitute.
+
 ## Stable identifiers and digests
 
 - Step 05/06 planning files預設放在 `specs/<feature>/delivery/<snapshot-version>/`；這個目錄可迭代，只有 sibling `snapshot/<version>/` immutable。Numbered specification paths 相對 `05-check-projection.json`，`repository_path` 相對 hub Git root。

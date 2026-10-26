@@ -50,6 +50,12 @@ completion criterion。進入 Steps 02–08 前完整閱讀 matrix，再只讀�
 
 Step 02 若發現需要新增/修改 canonical node、補 broad journey/capability discovery、解決 authority/boundary gap 或處理 contradiction，路由到 `$domain-graph`；只有 graph changes 已 commit 並提供 full SHA 後才回 Step 02 重新 gate。Step 08 的 domain feedback 也交給該 Skill，Feature Delivery 不在 evidence step 暗中維護 graph。這個 route 不轉移 Snapshot、product mutation 或 external-write authority。
 
+When Step 05 `extensions.dual_driver.enabled` is true, read
+[05 · Dual-driver acceptance](references/05-dual-driver-acceptance.md) alongside
+the current Step 05–08 reference. This optional advisory procedure owns API-first
+execution, per-surface UI bindings, proof and UI coverage reporting; it does not
+add a numbered gate or change existing readiness contracts.
+
 ## Authority 與 permission boundaries
 
 - Ticket/PO statements 是 request evidence；只有 identified PM/domain authority 能 confirm domain meaning。

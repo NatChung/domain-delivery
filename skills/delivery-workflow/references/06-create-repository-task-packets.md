@@ -57,6 +57,15 @@ Snapshot v0.1 只保存 lanes set 與 repositories set，沒有 repo→lane mapp
 
 不要在 packet 寫泛稱「tests pass」；列出 stable `check_id`、guide/command source 與 observable output。
 
+## Optional dual-driver handoff
+
+For an opted-in projection, copy its dual-driver configuration to task-plan
+`extensions` and include the [dual-driver checklist](05-dual-driver-acceptance.md#completion-checklist)
+in packet criteria. Packet notes identify API-first ordering across repositories,
+per-surface UI bindings, unsupported rows and the owner of retained catalog,
+run and fault-experiment artifacts. These are advisory additions, not changes to
+frozen required checks or the existing evidence input schema.
+
 ## 4. 建立 `06-repository-task-plan.json`
 
 以下是 non-canonical authoring example；欄位 authority 仍是 validator：
