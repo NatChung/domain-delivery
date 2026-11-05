@@ -3,6 +3,12 @@
 Skills, kernel, schemas, template, migrations and docs ship as one atomic
 SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
+## Unreleased
+
+- Clarify investigation coverage, risk decisions, incomplete request criteria,
+  same-base check comparisons, index provenance and simulation boundaries.
+- Examine all similar entry points and asynchronous failure/order risks.
+
 ## 0.6.0
 
 - Breaking: rename the Steps 01–08 Skill from `feature-delivery` to

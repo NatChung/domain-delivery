@@ -90,6 +90,12 @@ Ticket field、comment、attachment 與 linked issue 沒有固定的真實性優
 
 **完成判準：**上述每個欄位都有 Ticket 支持的值，或有對應的 `unknown` 解釋為何沒有值；每個 action 同時包含 `verb` 與 `object`。
 
+### 不完整 request 的逐欄 AC
+
+當 request 只有標題或描述不完整，逐一列出受影響輸入／資料欄位的候選 acceptance criteria：空值、欄位衝突、大小寫、查無結果及錯誤從哪個入口回報；不適用的題目要記原因。每項標示已知（附來源）或假設，未確認的行為保留為 unknown，交 request authority 決定，不作為已接受 AC。可放在 `extensions` 並保留現有 contract。
+
+本要求是 `prose-only, unenforced`：validator 無法判斷 request 是否完整、欄位清單是否窮盡或假設是否符合業務意圖。
+
 ## 3. 區分證據與 Agent 解讀
 
 將內容分成：

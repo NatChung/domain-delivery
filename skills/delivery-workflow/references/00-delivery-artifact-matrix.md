@@ -51,6 +51,8 @@ required check, Snapshot mutation or independent attestation substitute.
 - `05-check-projection.json.snapshot_digest` binds the frozen Step 04 manifest. `06-repository-task-plan.json.projection_digest` binds the exact Step 05 JSON. Step 02 retains the Feature Intent digest in its numbered Markdown report, but that linkage is `prose-only, unenforced` in v0.1.
 - A path in a planning artifact is descriptive until Step 08. Evidence binding trusts only bytes read by the kernel from the declared checker/output paths.
 
+沒有已接受的 Snapshot 時，任何探索性演練都只能標示為 `simulation`，不得宣稱 Step 04–08 通過；simulation 不是新 lane，也不授權修改 product code。此標示與宣稱的正確性為 `prose-only, unenforced`：演練可能發生在 kernel 管轄之外；既有 Snapshot 與下游 validators 仍機械式檢查其各自的正式輸入。
+
 ## Gate rule
 
 An Agent stops delivery progress at the first non-ready state and returns that artifact with its blocking reasons. Step 07 may call Step 08 only to append/report a failed run from real output; this preserves evidence without turning the state ready. It may gather Step 03 evidence only when Step 02 explicitly requests it. Human confirmation, external writes and product implementation still require the authorization stated by the active request; advancing the artifact chain does not broaden permission.

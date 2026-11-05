@@ -55,6 +55,18 @@ implementation loops。
 兩條 lane 只在明確的 snapshot 交會。後續 Domain Graph 的修改會回報為 drift，
 不會改寫已經進行中的工作。
 
+沒有已接受的 Snapshot 時，探索只能標為 `simulation`，不能宣稱 Steps 04–08
+通過；simulation 不新增 lane 或授權實作。此標示為 `prose-only, unenforced`，
+因演練可發生在 kernel 管轄之外。正式 gate 的驗證不變。
+
+實作調查記錄來源 coverage、每項影響風險的決定及理由，並追查既有持久資料
+與下游欄位用途，並逐一檢查同類入口、非同步失敗及操作順序。native checks 對照同一 base SHA 的基線；索引必須對應調查的
+base。這些跨工具與語意判斷為 `prose-only, unenforced`；程序及邊界見
+[Step 03](../skills/delivery-workflow/references/03-investigate-with-codegraph.md)
+與 [Step 07](../skills/delivery-workflow/references/07-run-repository-agent-loops.md)。
+不完整需求的逐欄 AC 與假設見
+[Step 01](../skills/delivery-workflow/references/01-understand-request.md)。
+
 ## 3. Truth、evidence 與 human authority
 
 每一個 domain statement 都有兩個彼此獨立的維度。
