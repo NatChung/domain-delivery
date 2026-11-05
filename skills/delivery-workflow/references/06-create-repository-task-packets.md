@@ -44,6 +44,8 @@ Snapshot v0.1 只保存 lanes set 與 repositories set，沒有 repo→lane mapp
 
 ## 3. 寫 completion criteria
 
+將 Step 03 已識別的每項風險連同改／不改決定與理由帶入 planning；未決風險保留為 blocker 並交 decision owner。此完整性是 `prose-only, unenforced`：validator 無法判斷調查的風險或決定是否充分。
+
 每個 packet 的 criteria 至少包含：
 
 - repo guides/production branch 已確認；

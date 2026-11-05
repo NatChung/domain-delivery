@@ -29,6 +29,10 @@
 
 保留使用者既有 changes。若需要 checkout、pull 或 branch switch，先確認不會覆蓋 work；HEAD 移動後直接執行 `codegraph sync`。Code location、impact 或 affected symbols 先用該 repo 的 `codegraph_explore(projectPath=...)`。
 
+記錄實際 base full SHA，並確認 code index 對應該 SHA 後才用於調查；不能確認則停止使用 index。此對應為 `prose-only, unenforced`，因 shared package 無法驗證各 explorer 的 index provenance。
+
+在同一 base SHA 執行適用的 native checks 並保存命令、環境、原始結果及 exit code，與變更後同一組 checks 比較，逐項辨認新增失敗與既有失敗；無法比較時明記原因，不推定失敗來自變更。失敗歸因是 `prose-only, unenforced`，因各 repo 的命令、環境與失敗識別方式不同。基線比較不改變 frozen required checks 的 exit contract：required check 仍須實際 exit 0 才能通過 evidence gate。
+
 ## 2. 執行 vertical red → green cycles
 
 每次只取一個 Snapshot rule / Step 05 contract：
@@ -95,7 +99,7 @@ Review findings、新 failure、未解決疑慮或 repo 明定的檢查頻率，
 
 - assigned projections 都有有效 red observation 與 green result；
 - packet completion criteria 全部可觀察地滿足；
-- native behaviour/contract/architecture/quality checks 已 fresh run；
+- native behaviour/contract/architecture/quality checks 已 fresh run，且記錄 base SHA 和新增／既有失敗的比較；
 - fresh review 沒有 blocking finding；
 - checker files 與 `/tmp/07-...` outputs 存在；
 - current repo commit/dirty state 已記錄；

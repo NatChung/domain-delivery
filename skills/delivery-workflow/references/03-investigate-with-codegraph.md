@@ -30,6 +30,8 @@ Hub 在 `hub.yaml` 的 `code_explorer.kind` 宣告使用哪個 explorer；本 re
 - HEAD 移動後直接執行 `codegraph sync`，不先用 `codegraph status` 判斷；
 - repo 沒有 `.codegraph/` 時不自行 `codegraph init`，記錄 missing index 並回報 Hub maintainer。
 
+記錄每個 repository 實際調查的 base full SHA；在該 base 上同步 index，確認 index 對應該 SHA 後才查詢。無法確認對應關係即 blocked。這是 `prose-only, unenforced`：目前沒有可驗證 explorer index 與 Git commit 對應的 shared interface。
+
 **完成判準：**每個 target repo 都有 guides-reviewed、branch/commit/dirty state 與 codegraph availability 紀錄；沒有用 stale/WIP branch 當成 current implementation。
 
 ## 2. 以 Codegraph 回答 exact questions
@@ -69,6 +71,8 @@ Codegraph impact 只在單一 repo 內。跨 repo flow 必須分別查兩端，�
 - known architecture debt or test seams；
 - code 與 Ticket/Domain Graph 的 agreement、gap 或 contradiction。
 
+對每個受影響欄位或資料，追查下游哪些消費者用它決定行為；對持久資料說明既有資料如何處理，包括不處理的理由。列出每個找到的風險、決定（改／不改）及理由；未能決定時標為 unresolved 並交 decision owner，不能只列風險就視為完成。這些調查與決定是 `prose-only, unenforced`：工具無法判定資料流、風險清單及理由的語意完整性。
+
 Service/repository/team alignment 只是 boundary evidence。它不自動建立 Bounded Context，也不把 code-derived rule 變成 confirmed node。
 
 ## 5. 產出 `03-implementation-investigation.md`
@@ -85,6 +89,7 @@ Service/repository/team alignment 只是 boundary evidence。它不自動建立 
 
 ## Requested questions
 ## Repository states
+## Evidence source coverage
 ## Codegraph queries and call paths
 ## Observed findings
 ## Inferences
@@ -95,11 +100,13 @@ Service/repository/team alignment 只是 boundary evidence。它不自動建立 
 ## Enforcement notes
 ```
 
+Evidence source coverage 以表格逐項記錄來源、已查／未查、查閱範圍及原因；未查來源不是不存在的證據。表格的完整性是 `prose-only, unenforced`：沒有共享的來源目錄可證明所有相關來源都已列出。
+
 每個 query/finding 使用 Step 02 question ID。若用 fallback，緊鄰 finding 寫明 `codegraph fallback: <reason>`。Report digest 與內容在 v0.1 是 `prose-only, unenforced`。
 
 ## Status rule
 
-- `complete`：每個 requested question 都有可追溯 observed answer，或已證明 evidence 本身不足而能形成精確的 Step 02 question；所有 target repos 使用允許的 primary/production branch 與已同步 index。
+- `complete`：每個 requested question 都有可追溯 observed answer，或已證明 evidence 本身不足而能形成精確的 Step 02 question；所有 target repos 使用允許的 primary/production branch 與對應實際 base SHA 的 index；coverage 表及每項風險的決定／未解決狀態已記錄。
 - `blocked`：缺 `.codegraph/`、無法安全取得 primary branch/current contract、必要 source unavailable，或結果不足以讓 Step 02 重新分類。
 
 `complete` 不等於「找到肯定答案」，也不等於 Domain Gate passed。
