@@ -71,7 +71,7 @@ Codegraph impact 只在單一 repo 內。跨 repo flow 必須分別查兩端，�
 - known architecture debt or test seams；
 - code 與 Ticket/Domain Graph 的 agreement、gap 或 contradiction。
 
-對每個受影響欄位或資料，追查下游哪些消費者用它決定行為；對持久資料說明既有資料如何處理，包括不處理的理由。列出每個找到的風險、決定（改／不改）及理由；未能決定時標為 unresolved 並交 decision owner，不能只列風險就視為完成。這些調查與決定是 `prose-only, unenforced`：工具無法判定資料流、風險清單及理由的語意完整性。
+列出所有找到的同類入口與共用 callers，逐一判斷是否修改及理由；不能只處理其中一個入口。調查非同步失敗及操作順序，包括前一步已移除資料、後續新增失敗時的結果，記錄未驗證的情況。對每個受影響欄位或資料，追查下游哪些消費者用它決定行為；對持久資料說明既有資料如何處理，包括不處理的理由。列出每個找到的風險、決定（改／不改）及理由；未能決定時標為 unresolved 並交 decision owner，不能只列風險就視為完成。這些調查與決定是 `prose-only, unenforced`：工具無法判定資料流、風險清單及理由的語意完整性。
 
 Service/repository/team alignment 只是 boundary evidence。它不自動建立 Bounded Context，也不把 code-derived rule 變成 confirmed node。
 

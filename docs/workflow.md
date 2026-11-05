@@ -60,7 +60,7 @@ implementation loops。
 因演練可發生在 kernel 管轄之外。正式 gate 的驗證不變。
 
 實作調查記錄來源 coverage、每項影響風險的決定及理由，並追查既有持久資料
-與下游欄位用途。native checks 對照同一 base SHA 的基線；索引必須對應調查的
+與下游欄位用途，並逐一檢查同類入口、非同步失敗及操作順序。native checks 對照同一 base SHA 的基線；索引必須對應調查的
 base。這些跨工具與語意判斷為 `prose-only, unenforced`；程序及邊界見
 [Step 03](../skills/delivery-workflow/references/03-investigate-with-codegraph.md)
 與 [Step 07](../skills/delivery-workflow/references/07-run-repository-agent-loops.md)。

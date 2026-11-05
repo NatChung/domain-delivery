@@ -7,6 +7,7 @@ SemVer release. Consumers pin a tag in `workflow.lock` and upgrade explicitly.
 
 - Clarify investigation coverage, risk decisions, incomplete request criteria,
   same-base check comparisons, index provenance and simulation boundaries.
+- Examine all similar entry points and asynchronous failure/order risks.
 
 ## 0.6.0
 
